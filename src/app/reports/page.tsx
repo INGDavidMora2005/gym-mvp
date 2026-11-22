@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { getCurrentOwner } from '@/lib/auth';
+import { requireOwner } from '@/lib/auth';
 import { fetchDashboardStats, fetchMonthlyRevenue } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/UIComponents';
@@ -10,8 +9,7 @@ import { DollarSign, Calendar, TrendingUp, Users } from 'lucide-react';
 export const revalidate = 0;
 
 export default async function ReportsPage() {
-  const owner = await getCurrentOwner();
-  if (!owner) redirect('/auth/login');
+  const owner = await requireOwner();
 
   const [stats, revenueData] = await Promise.all([
     fetchDashboardStats(),

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { escapeLikePattern } from '@/lib/auth';
 
 export type LoginState = {
   error?: string;
@@ -34,7 +35,7 @@ export async function loginAction(
   const { data: owner, error: ownerError } = await createSupabaseAdminClient()
     .from('owners')
     .select('id')
-    .eq('email', data.user.email.toLowerCase())
+    .ilike('email', escapeLikePattern(data.user.email.toLowerCase()))
     .maybeSingle();
 
   if (ownerError) {

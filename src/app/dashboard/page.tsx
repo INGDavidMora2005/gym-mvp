@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { requireOwner } from '@/lib/auth';
 import { fetchClientsWithStatus, fetchDashboardStats } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
@@ -28,7 +27,7 @@ export default async function DashboardPage() {
       client_id: clientId,
       amount_cop: 65000,
       paid_at: now,
-      recorded_by: owner?.name || 'Dueño',
+      recorded_by: owner.name,
       note: 'Renovación de tarifa fija $65.000',
     });
     revalidatePath('/dashboard');
@@ -42,7 +41,7 @@ export default async function DashboardPage() {
     await supabase.from('attendance').insert({
       client_id: clientId,
       check_in: new Date().toISOString(),
-      recorded_by: owner?.name || 'Dueño',
+      recorded_by: owner.name,
     });
     revalidatePath('/dashboard');
     revalidatePath('/attendance');

@@ -2,6 +2,11 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from './supabase/server';
 import { createSupabaseAdminClient } from './supabase/admin';
 
+// Escapa los comodines de ILIKE para que el email se compare de forma literal.
+export function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
 // Devuelve el dueño autenticado o null si no hay sesión válida
 // o si el usuario no está registrado en la tabla `owners`.
 export async function getCurrentOwner() {
@@ -17,7 +22,7 @@ export async function getCurrentOwner() {
   const { data: owner, error: ownerError } = await createSupabaseAdminClient()
     .from('owners')
     .select('*')
-    .eq('email', user.email.toLowerCase())
+    .ilike('email', escapeLikePattern(user.email.toLowerCase()))
     .maybeSingle();
 
   if (ownerError || !owner) return null;

@@ -1,17 +1,15 @@
-import { redirect } from 'next/navigation';
-import { getCurrentOwner } from '@/lib/auth';
+import { requireOwner } from '@/lib/auth';
 import { fetchClientsWithStatus } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
 import { Card, Button, StatusBadge } from '@/components/UIComponents';
-import { AlertTriangle, MessageCircle, Calendar } from 'lucide-react';
+import { AlertTriangle, MessageCircle } from 'lucide-react';
 import { formatDate, buildWhatsAppUrl, generateExpirationMessage } from '@/lib/utils';
 import Link from 'next/link';
 
 export const revalidate = 0;
 
 export default async function ExpirationsPage() {
-  const owner = await getCurrentOwner();
-  if (!owner) redirect('/auth/login');
+  const owner = await requireOwner();
 
   const clients = await fetchClientsWithStatus();
 
