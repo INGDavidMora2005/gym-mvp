@@ -1,152 +1,104 @@
--- Schema SQL para Supabase
--- Copia todo este archivo en SQL Editor de Supabase y ejecuta
+-- ============================================================================
+-- Esquema de base de datos - Gimnasio MVP
+--
+-- Diseño service-role-only:
+--   - RLS habilitado en las 4 tablas y SIN políticas para anon/authenticated.
+--   - RLS sin políticas equivale a deny-all para los clientes públicos.
+--   - Solo la service role (exclusivamente del servidor) accede a los datos.
+--   - La anon key se usa únicamente para Supabase Auth (login).
+--
+-- Instalación limpia:
+--   Copia y ejecuta este archivo completo en el SQL Editor de Supabase.
+--
+-- Cómo crear un dueño:
+--   1. En Authentication > Providers > Email, desactiva "Allow new users to sign up".
+--   2. En Authentication > Users, crea el usuario con su email y contraseña.
+--   3. Registra el mismo email en la tabla owners, sin datos reales:
+--
+--        insert into owners (name, email)
+--        values ('Nombre del dueño', 'email@dominio.com');
+--
+--   La contraseña la gestiona Supabase Auth; owners no almacena contraseñas.
+--   La aplicación relaciona al dueño con el usuario por email (sin distinguir
+--   mayúsculas), por eso owners.id es independiente de auth.users.id.
+-- ============================================================================
 
--- 1. Habilitar RLS (Row Level Security)
--- Esto asegura que solo usuarios autenticados puedan acceder
-
--- 2. Tabla de Dueños (Owners)
--- Para este MVP usamos autenticación de Supabase, pero guardamos metadata adicional aquí
-create table owners (
-  id uuid primary key default uuid_generate_v4(),
+-- 1. Dueños
+create table if not exists public.owners (
+  id uuid primary key default gen_random_uuid(),
   name text not null,
-  email text not null unique,
-  password_hash text, -- solo usado si decides autenticar manualmente
-  created_at timestamp with time zone default now()
+  email text not null,
+  created_at timestamptz not null default now()
 );
 
--- 3. Tabla de Clientes
-create table clients (
-  id uuid primary key default uuid_generate_v4(),
+-- Unicidad del email sin distinguir mayúsculas/minúsculas.
+create unique index if not exists owners_email_lower_idx
+  on public.owners (lower(email));
+
+-- 2. Clientes
+create table if not exists public.clients (
+  id uuid primary key default gen_random_uuid(),
   name text not null,
-  age integer,
+  age integer check (age is null or age between 10 and 100),
   address text,
   phone text not null unique,
-  payment_method text not null check (payment_method in ('EFECTIVO', 'NEQUI', 'DAVPLATA', 'PSE', 'OTRO')),
-  consent_at timestamp with time zone,
-  active boolean default true,
-  created_at timestamp with time zone default now()
+  payment_method text not null check (
+    payment_method in ('EFECTIVO', 'NEQUI', 'DAVPLATA', 'PSE', 'OTRO')
+  ),
+  consent_at timestamptz,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
--- Índices
-create index idx_clients_active on clients(active);
-create index idx_clients_phone on clients(phone);
+-- El unique de phone ya crea su propio índice; no se duplica.
+create index if not exists idx_clients_active
+  on public.clients (active);
 
--- 4. Tabla de Pagos de Membresía
-create table membership_payments (
-  id uuid primary key default uuid_generate_v4(),
-  client_id uuid references clients(id) on delete cascade,
+-- 3. Pagos de membresía
+create table if not exists public.membership_payments (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
   amount_cop integer not null check (amount_cop > 0),
-  paid_at timestamp with time zone default now(),
-  period_start timestamp with time zone,
-  period_end timestamp with time zone,
+  paid_at timestamptz not null default now(),
+  period_start timestamptz,
+  period_end timestamptz,
   recorded_by text,
   note text,
-  created_at timestamp with time zone default now()
+  created_at timestamptz not null default now()
 );
 
-create index idx_payments_client on membership_payments(client_id);
-create index idx_payments_paid on membership_payments(paid_at desc);
+create index if not exists idx_payments_client_paid_at
+  on public.membership_payments (client_id, paid_at desc);
 
--- 5. Tabla de Asistencias
-create table attendance (
-  id uuid primary key default uuid_generate_v4(),
-  client_id uuid references clients(id) on delete cascade,
-  check_in timestamp with time zone default now(),
+-- 4. Asistencias
+create table if not exists public.attendance (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients (id) on delete cascade,
+  check_in timestamptz not null default now(),
   note text,
   recorded_by text,
-  created_at timestamp with time zone default now()
+  created_at timestamptz not null default now()
 );
 
-create index idx_attendance_client on attendance(client_id);
-create index idx_attendance_checkin on attendance(check_in desc);
+create index if not exists idx_attendance_client_check_in
+  on public.attendance (client_id, check_in desc);
 
--- 6. Autenticación con Supabase Auth
--- La autenticación está integrada en el proyecto. Los dueños se registran vía Supabase Auth
--- Luego se sincronizan con la tabla owners usando triggers
+create index if not exists idx_attendance_check_in
+  on public.attendance (check_in desc);
 
--- Trigger para sincronizar usuarios de auth con tabla owners
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-  -- Solo para usuarios que tengan rol 'owner' en metadata o email específico
-  if (new.email = 'admin@admin.com' or new.user_metadata->>'role' = 'owner') then
-    insert into owners (id, name, email)
-    values (new.id, new.raw_user_meta_data->>'name' or split_part(new.email, '@', 1), new.email)
-    on conflict (email) do nothing;
-  end if;
-  return new;
-end;
-$$ language plpgsql security definer;
+-- 5. Seguridad: RLS deny-all para anon/authenticated
+-- No se crean políticas a propósito: la service role omite RLS y es la única
+-- vía de acceso a los datos. La anon key solo se usa para autenticarse.
+alter table public.owners enable row level security;
+alter table public.clients enable row level security;
+alter table public.membership_payments enable row level security;
+alter table public.attendance enable row level security;
 
-create trigger on_auth_user_created
-after sign up
-for each row
-execute function public.handle_new_user();
+revoke all on table
+  public.owners,
+  public.clients,
+  public.membership_payments,
+  public.attendance
+from anon, authenticated;
 
--- 7. Views útiles
--- Vista con clientes y su estado actual de membresía
-create or replace view client_membership_status as
-select
-  c.*,
-  coalesce(
-    (select paid_at from membership_payments mp 
-     where mp.client_id = c.id 
-     order by paid_at desc 
-     limit 1
-  ), c.created_at) as last_payment_at,
-  case
-    when last_payment_at is null then 'VENCIDO'::text
-    else
-      case
-        when (now() - last_payment_at) < interval '5 days' then 'POR_VENCER'::text
-        when (now() - last_payment_at) < interval '30 days' then 'ACTIVO'::text
-        else 'VENCIDO'::text
-      end
-  end as status,
-  coalesce(last_payment_at, c.created_at) + interval '30 days' as next_expiration
-from clients c
-where c.active = true;
-
--- 8. Políticas RLS para seguridad
--- Política para lectura de clientes (solo para usuarios autenticados)
-create policy "authenticated can view clients"
-on clients for select
-using (auth.role() = 'authenticated');
-
--- Política para inserción de clientes
-create policy "authenticated can create clients"
-on clients for insert
-with check (auth.role() = 'authenticated');
-
--- Política para actualización de clientes
-create policy "authenticated can update clients"
-on clients for update
-using (auth.role() = 'authenticated');
-
--- Política para eliminación lógica de clientes
-create policy "authenticated can delete clients"
-on clients for update
-using (auth.role() = 'authenticated');
-
--- Políticas para membership_payments
-create policy "authenticated can view payments"
-on membership_payments for select
-using (auth.role() = 'authenticated');
-
-create policy "authenticated can create payments"
-on membership_payments for insert
-with check (auth.role() = 'authenticated');
-
--- Políticas para attendance
-create policy "authenticated can view attendance"
-on attendance for select
-using (auth.role() = 'authenticated');
-
-create policy "authenticated can create attendance"
-on attendance for insert
-with check (auth.role() = 'authenticated');
-
--- Habilitar RLS en todas las tablas
-alter table clients enable row level security;
-alter table membership_payments enable row level security;
-alter table attendance enable row level security;
+alter default privileges in schema public revoke all on tables from anon, authenticated;

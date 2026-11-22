@@ -45,7 +45,9 @@ La aplicación resuelve las necesidades clave de operación diaria:
 ```text
 gym-app/
 ├── sql/
-│   └── schema.sql            # Script SQL de tablas, índices y vistas para Supabase
+│   ├── schema.sql            # Instalación limpia: tablas, índices y RLS deny-all
+│   └── migrations/
+│       └── 001_endurecimiento.sql  # Endurecimiento para bases ya existentes
 ├── src/
 │   ├── app/
 │   │   ├── auth/login/       # Pantalla de inicio de sesión (Server Action)
@@ -63,8 +65,7 @@ gym-app/
 │   ├── lib/
 │   │   ├── auth.ts           # Helpers de verificación de dueños y sesión
 │   │   ├── db.ts             # Consultas de métricas, ingresos e historial
-│   │   ├── supabase.ts       # Cliente Supabase en servidor (Service Role)
-│   │   ├── supabase-client.ts# Cliente Supabase en navegador
+│   │   ├── supabase/         # Clientes Supabase de servidor, admin y middleware
 │   │   └── utils.ts          # Formateo COP, fechas y generador de mensajes WhatsApp
 │   └── types/
 │       └── index.ts          # Interfaces y tipos del dominio
@@ -108,30 +109,49 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 > **Nota:** Puedes obtener las llaves en Supabase desde **Settings > API Keys**.
-> La clave pública (anon/publishable) se usa en el navegador y el middleware; la secreta
-> (service_role/secret) solo en el servidor. Si rotas las llaves, actualiza **ambas**.
+> La clave pública (anon/publishable) se usa únicamente para Supabase Auth; la secreta
+> (service_role/secret) solo en el servidor y es la única con acceso a los datos. Si
+> rotas las llaves, actualiza **ambas**.
 
 ---
 
 ### 4. Configurar la Base de Datos en Supabase
 
+La aplicación usa un diseño **service-role-only** para los datos:
+
+- La **service role** se usa solo en el servidor para leer y escribir las tablas.
+- La **anon key** se usa únicamente para Supabase Auth (login y sesión).
+- RLS está habilitado en las cuatro tablas **sin políticas** para `anon` ni
+  `authenticated` (deny-all). No se crean políticas permisivas.
+
+#### Opción A: Instalación limpia
+
 1. Ve al panel de Supabase → **SQL Editor**.
-2. Copia y ejecuta el contenido del archivo `sql/schema.sql`. Esto creará las tablas:
-   - `owners`
-   - `clients`
-   - `membership_payments`
-   - `attendance`
-3. Crea los dueños en **Authentication > Users** (email + contraseña). Después registra
-   esos mismos usuarios en la tabla `owners`, usando el mismo email:
+2. Copia y ejecuta completo `sql/schema.sql`. Crea las tablas `owners`, `clients`,
+   `membership_payments` y `attendance`, sus índices, y habilita RLS deny-all.
+3. En **Authentication > Providers > Email**, desactiva **Allow new users to sign up**.
+   Es obligatorio: el registro público debe quedar cerrado y solo los dueños
+   existentes deben poder iniciar sesión.
+4. En **Authentication > Users**, crea cada dueño con su email y contraseña.
+5. Registra el mismo email en la tabla `owners`:
 
 ```sql
-insert into owners (id, name, email)
-select id, split_part(email, '@', 1), email
-from auth.users
-where email in ('padre@ejemplo.com', 'esposa@ejemplo.com', 'hija@ejemplo.com');
+insert into owners (name, email)
+values ('Nombre del dueño', 'email@dominio.com');
 ```
 
-> El login lo gestiona Supabase Auth; `owners` solo define quién tiene acceso al panel.
+> La contraseña la gestiona Supabase Auth; la tabla `owners` no guarda contraseñas.
+> La app relaciona al usuario autenticado con su registro de `owners` por email
+> (sin distinguir mayúsculas), por lo que `owners.id` no necesita coincidir con
+> el id de `auth.users`.
+
+#### Opción B: Base de datos ya existente
+
+Si ya tienes las tablas creadas con el esquema anterior, ejecuta una sola vez
+`sql/migrations/001_endurecimiento.sql`. La migración es idempotente: habilita RLS
+deny-all, elimina las políticas antiguas, revoca permisos de `anon` y `authenticated`,
+elimina los objetos obsoletos de la autenticación anterior y crea el índice único de
+email sin distinguir mayúsculas.
 
 ---
 
