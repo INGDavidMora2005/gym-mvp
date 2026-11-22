@@ -2,9 +2,9 @@ import { requireOwner } from '@/lib/auth';
 import { fetchClientsWithStatus } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
 import { Card, Button } from '@/components/UIComponents';
+import { recordAttendanceAction } from '@/app/actions/attendance';
 import { CalendarCheck, CheckCircle } from 'lucide-react';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { revalidatePath } from 'next/cache';
 
 export const revalidate = 0;
 
@@ -18,28 +18,18 @@ export default async function AttendancePage() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const { data: todayAttendances } = await supabase
+  const { data: todayAttendances, error: todayAttendancesError } = await supabase
     .from('attendance')
     .select('client_id, check_in')
     .gte('check_in', todayStart.toISOString())
     .order('check_in', { ascending: false });
 
-  const attendedMap = new Set((todayAttendances || []).map((a) => a.client_id));
-
-  // Action para marcar ingreso de cliente
-  async function recordAttendanceAction(formData: FormData) {
-    'use server';
-    const owner = await requireOwner();
-    const clientId = formData.get('client_id') as string;
-    const sb = createSupabaseAdminClient();
-    await sb.from('attendance').insert({
-      client_id: clientId,
-      check_in: new Date().toISOString(),
-      recorded_by: owner.name,
-    });
-    revalidatePath('/attendance');
-    revalidatePath('/dashboard');
+  if (todayAttendancesError) {
+    console.error('[AttendancePage:attendance]', todayAttendancesError.message);
+    throw new Error('No se pudieron cargar las asistencias.');
   }
+
+  const attendedMap = new Set((todayAttendances || []).map((a) => a.client_id));
 
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">
@@ -88,8 +78,7 @@ export default async function AttendancePage() {
                     <span>Ya entró hoy</span>
                   </span>
                 ) : (
-                  <form action={recordAttendanceAction}>
-                    <input type="hidden" name="client_id" value={c.id} />
+                  <form action={recordAttendanceAction.bind(null, c.id)}>
                     <Button variant="primary" size="sm" type="submit">
                       Marcar Ingreso
                     </Button>

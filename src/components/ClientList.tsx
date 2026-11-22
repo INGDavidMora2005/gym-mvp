@@ -134,7 +134,7 @@ export function ClientList({
                   size="sm"
                   disabled={loadingId === c.id}
                   onClick={() => handleRenewClick(c.id)}
-                  title="Renovar suscripción de $65.000"
+                  title={`Renovar suscripción de ${formatCOP(FIXED_FEE_COP)}`}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Renovar</span>

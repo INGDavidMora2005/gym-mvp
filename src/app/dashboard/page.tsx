@@ -3,10 +3,10 @@ import { fetchClientsWithStatus, fetchDashboardStats } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
 import { ClientList } from '@/components/ClientList';
 import { Card } from '@/components/UIComponents';
-import { Users, AlertTriangle, CheckCircle, DollarSign, Dumbbell, MessageCircle, UserX } from 'lucide-react';
-import { formatCOP, buildWhatsAppUrl, generateInactivityMessage } from '@/lib/utils';
-import { revalidatePath } from 'next/cache';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { renewClientAction } from '@/app/actions/payments';
+import { recordAttendanceAction } from '@/app/actions/attendance';
+import { Users, AlertTriangle, CheckCircle, DollarSign, MessageCircle, UserX } from 'lucide-react';
+import { FIXED_FEE_COP, formatCOP, buildWhatsAppUrl, generateInactivityMessage } from '@/lib/utils';
 
 export const revalidate = 0;
 
@@ -17,35 +17,6 @@ export default async function DashboardPage() {
     fetchClientsWithStatus(),
     fetchDashboardStats(),
   ]);
-
-  async function renewClientAction(clientId: string) {
-    'use server';
-    await requireOwner();
-    const supabase = createSupabaseAdminClient();
-    const now = new Date().toISOString();
-    await supabase.from('membership_payments').insert({
-      client_id: clientId,
-      amount_cop: 65000,
-      paid_at: now,
-      recorded_by: owner.name,
-      note: 'Renovación de tarifa fija $65.000',
-    });
-    revalidatePath('/dashboard');
-    revalidatePath('/expirations');
-  }
-
-  async function recordAttendanceAction(clientId: string) {
-    'use server';
-    await requireOwner();
-    const supabase = createSupabaseAdminClient();
-    await supabase.from('attendance').insert({
-      client_id: clientId,
-      check_in: new Date().toISOString(),
-      recorded_by: owner.name,
-    });
-    revalidatePath('/dashboard');
-    revalidatePath('/attendance');
-  }
 
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">
@@ -61,7 +32,7 @@ export default async function DashboardPage() {
           </div>
           <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-2 text-right">
             <span className="text-xs font-medium text-brand-700 block">Tarifa Única</span>
-            <span className="text-lg font-bold text-brand-900">$65.000 COP / mes</span>
+            <span className="text-lg font-bold text-brand-900">{formatCOP(FIXED_FEE_COP)} COP / mes</span>
           </div>
         </div>
 

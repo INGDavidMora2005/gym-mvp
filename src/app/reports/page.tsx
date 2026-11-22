@@ -3,7 +3,7 @@ import { fetchDashboardStats, fetchMonthlyRevenue } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/UIComponents';
 import { RevenueChart } from '@/components/RevenueChart';
-import { formatCOP } from '@/lib/utils';
+import { FIXED_FEE_COP, formatCOP } from '@/lib/utils';
 import { DollarSign, Calendar, TrendingUp, Users } from 'lucide-react';
 
 export const revalidate = 0;
@@ -139,7 +139,7 @@ export default async function ReportsPage() {
               <div className="text-center p-4 bg-indigo-100 rounded-xl">
                 <p className="text-2xl font-bold text-indigo-700">
                   {stats.revenue_this_month > 0
-                    ? ((stats.revenue_this_month / stats.active_clients) / 65000)
+                    ? ((stats.revenue_this_month / stats.active_clients) / FIXED_FEE_COP)
                     : 0}
                   %
                 </p>

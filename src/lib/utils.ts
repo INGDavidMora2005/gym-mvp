@@ -48,24 +48,31 @@ export function calculateMembershipStatus(lastPaymentAt: string | null): {
 }
 
 /**
- * Limpia y normaliza el teléfono para WhatsApp (ej. de Colombia).
+ * Limpia y normaliza un teléfono colombiano a su forma canónica de 10 dígitos.
+ * Acepta espacios, guiones, paréntesis y prefijo +57/57.
+ * La validación de que empiece por 3 se hace en el esquema de Zod.
  */
 export function normalizePhone(rawPhone: string): string {
   let clean = rawPhone.replace(/\D/g, '');
   if (clean.startsWith('57') && clean.length === 12) {
-    return clean;
-  }
-  if (clean.length === 10 && clean.startsWith('3')) {
-    return '57' + clean;
+    clean = clean.slice(2);
   }
   return clean;
+}
+
+/**
+ * Devuelve el número en formato internacional (57 + 10 dígitos) para wa.me.
+ */
+export function toWhatsAppPhone(rawPhone: string): string {
+  const clean = normalizePhone(rawPhone);
+  return clean.length === 10 && clean.startsWith('3') ? '57' + clean : clean;
 }
 
 /**
  * Construye el enlace de WhatsApp (wa.me) para enviar mensajes precargados.
  */
 export function buildWhatsAppUrl(phone: string, text: string): string {
-  const norm = normalizePhone(phone);
+  const norm = toWhatsAppPhone(phone);
   const encodedText = encodeURIComponent(text);
   return `https://wa.me/${norm}?text=${encodedText}`;
 }

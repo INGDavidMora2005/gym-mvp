@@ -11,13 +11,25 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
     .eq('active', true)
     .order('created_at', { ascending: false });
 
-  if (errClients || !clients) return [];
+  if (errClients) {
+    console.error('[fetchClientsWithStatus:clients]', errClients.message);
+    throw new Error('No se pudieron cargar los clientes.');
+  }
+
+  if (!clients) {
+    throw new Error('No se pudieron cargar los clientes.');
+  }
 
   // Obtener los pagos más recientes de cada cliente
-  const { data: payments } = await supabase
+  const { data: payments, error: errPayments } = await supabase
     .from('membership_payments')
     .select('client_id, paid_at')
     .order('paid_at', { ascending: false });
+
+  if (errPayments) {
+    console.error('[fetchClientsWithStatus:payments]', errPayments.message);
+    throw new Error('No se pudieron cargar los pagos.');
+  }
 
   const paymentMap: Record<string, string> = {};
   if (payments) {
@@ -29,10 +41,15 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
   }
 
   // Obtener la última asistencia y total de asistencias del mes
-  const { data: attendances } = await supabase
+  const { data: attendances, error: errAttendances } = await supabase
     .from('attendance')
     .select('client_id, check_in')
     .order('check_in', { ascending: false });
+
+  if (errAttendances) {
+    console.error('[fetchClientsWithStatus:attendance]', errAttendances.message);
+    throw new Error('No se pudieron cargar las asistencias.');
+  }
 
   const lastAttendanceMap: Record<string, string> = {};
   const monthAttendanceMap: Record<string, number> = {};
@@ -100,25 +117,40 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
 
-  const { data: thisMonthPays } = await supabase
+  const { data: thisMonthPays, error: errThisMonthPays } = await supabase
     .from('membership_payments')
     .select('amount_cop')
     .gte('paid_at', firstDayThisMonth);
 
-  const { data: lastMonthPays } = await supabase
+  if (errThisMonthPays) {
+    console.error('[fetchDashboardStats:this-month-payments]', errThisMonthPays.message);
+    throw new Error('No se pudieron cargar las métricas.');
+  }
+
+  const { data: lastMonthPays, error: errLastMonthPays } = await supabase
     .from('membership_payments')
     .select('amount_cop')
     .gte('paid_at', firstDayLastMonth)
     .lte('paid_at', lastDayLastMonth);
 
+  if (errLastMonthPays) {
+    console.error('[fetchDashboardStats:last-month-payments]', errLastMonthPays.message);
+    throw new Error('No se pudieron cargar las métricas.');
+  }
+
   const revenueThisMonth = (thisMonthPays || []).reduce((acc, p) => acc + p.amount_cop, 0);
   const revenueLastMonth = (lastMonthPays || []).reduce((acc, p) => acc + p.amount_cop, 0);
 
   // Total asistencias del mes
-  const { count: attendanceThisMonth } = await supabase
+  const { count: attendanceThisMonth, error: errAttendanceCount } = await supabase
     .from('attendance')
     .select('id', { count: 'exact', head: true })
     .gte('check_in', firstDayThisMonth);
+
+  if (errAttendanceCount) {
+    console.error('[fetchDashboardStats:attendance]', errAttendanceCount.message);
+    throw new Error('No se pudieron cargar las métricas.');
+  }
 
   return {
     total_clients: clients.length,
@@ -134,10 +166,15 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
 export async function fetchMonthlyRevenue(monthsCount: number = 6): Promise<RevenuePoint[]> {
   const supabase = createSupabaseAdminClient();
-  const { data: payments } = await supabase
+  const { data: payments, error } = await supabase
     .from('membership_payments')
     .select('paid_at, amount_cop')
     .order('paid_at', { ascending: true });
+
+  if (error) {
+    console.error('[fetchMonthlyRevenue]', error.message);
+    throw new Error('No se pudieron cargar los ingresos.');
+  }
 
   const monthMap: Record<string, { revenue: number; count: number; label: string }> = {};
 

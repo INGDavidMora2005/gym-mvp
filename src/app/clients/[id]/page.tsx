@@ -1,14 +1,14 @@
-import { redirect, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { calculateMembershipStatus, formatDate, formatCOP, buildWhatsAppUrl, generateExpirationMessage } from '@/lib/utils';
+import { calculateMembershipStatus, formatDate, formatCOP, buildWhatsAppUrl, generateExpirationMessage, FIXED_FEE_COP } from '@/lib/utils';
 import { Navigation } from '@/components/Navigation';
 import { Card, Button, StatusBadge } from '@/components/UIComponents';
+import { ClientForm } from '@/components/ClientForm';
+import { renewClientAction } from '@/app/actions/payments';
+import { softDeleteClientAction, updateClientAction } from '@/app/actions/clients';
 import { ArrowLeft, RefreshCw, MessageCircle, Trash2, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { revalidatePath } from 'next/cache';
-
-const PAYMENT_METHODS = ['EFECTIVO', 'NEQUI', 'DAVPLATA', 'PSE', 'OTRO'];
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const owner = await requireOwner();
@@ -19,100 +19,45 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const supabase = createSupabaseAdminClient();
 
   // Cliente
-  const { data: client } = await supabase
+  const { data: client, error: clientError } = await supabase
     .from('clients')
     .select('*')
     .eq('id', id)
     .single();
 
+  if (clientError && clientError.code !== 'PGRST116') {
+    console.error('[ClientDetailPage:client]', clientError.message);
+    throw new Error('No se pudo cargar el cliente.');
+  }
+
   if (!client) notFound();
 
   // Pagos
-  const { data: payments } = await supabase
+  const { data: payments, error: paymentsError } = await supabase
     .from('membership_payments')
     .select('*')
     .eq('client_id', id)
     .order('paid_at', { ascending: false });
 
+  if (paymentsError) {
+    console.error('[ClientDetailPage:payments]', paymentsError.message);
+    throw new Error('No se pudieron cargar los pagos.');
+  }
+
   // Asistencias
-  const { data: attendances } = await supabase
+  const { data: attendances, error: attendancesError } = await supabase
     .from('attendance')
     .select('*')
     .eq('client_id', id)
     .order('check_in', { ascending: false });
 
+  if (attendancesError) {
+    console.error('[ClientDetailPage:attendance]', attendancesError.message);
+    throw new Error('No se pudieron cargar las asistencias.');
+  }
+
   const lastPay = payments && payments.length > 0 ? payments[0].paid_at : null;
   const { status, next_expiration, days_left } = calculateMembershipStatus(lastPay);
-
-  // Actions
-  async function updateClientAction(formData: FormData) {
-    'use server';
-    await requireOwner();
-
-    // Solo se actualizan los campos que realmente vienen en el formulario.
-    const updates: Record<string, unknown> = {};
-
-    if (formData.has('name')) {
-      const name = (formData.get('name') as string | null)?.trim();
-      if (name) updates.name = name;
-    }
-
-    if (formData.has('age')) {
-      const rawAge = (formData.get('age') as string | null)?.trim();
-      if (rawAge) {
-        const parsedAge = parseInt(rawAge, 10);
-        updates.age = Number.isNaN(parsedAge) ? null : parsedAge;
-      } else {
-        updates.age = null;
-      }
-    }
-
-    if (formData.has('address')) {
-      const address = (formData.get('address') as string | null)?.trim();
-      updates.address = address || null;
-    }
-
-    if (formData.has('phone')) {
-      const phone = (formData.get('phone') as string | null)?.trim();
-      if (phone) updates.phone = phone;
-    }
-
-    const paymentMethod = formData.get('payment_method') as string | null;
-    if (paymentMethod && PAYMENT_METHODS.includes(paymentMethod)) {
-      updates.payment_method = paymentMethod;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      const sb = createSupabaseAdminClient();
-      await sb.from('clients').update(updates).eq('id', id);
-    }
-
-    revalidatePath(`/clients/${id}`);
-    revalidatePath('/dashboard');
-  }
-
-  async function renewAction() {
-    'use server';
-    const owner = await requireOwner();
-    const sb = createSupabaseAdminClient();
-    await sb.from('membership_payments').insert({
-      client_id: id,
-      amount_cop: 65000,
-      paid_at: new Date().toISOString(),
-      recorded_by: owner.name,
-      note: 'Renovación de tarifa fija $65.000',
-    });
-    revalidatePath(`/clients/${id}`);
-    revalidatePath('/dashboard');
-  }
-
-  async function softDeleteAction() {
-    'use server';
-    await requireOwner();
-    const sb = createSupabaseAdminClient();
-    await sb.from('clients').update({ active: false }).eq('id', id);
-    redirect('/dashboard');
-  }
 
   const waUrl = buildWhatsAppUrl(
     client.phone,
@@ -143,10 +88,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
-              <form action={renewAction} className="flex-1 sm:flex-initial">
+              <form action={renewClientAction.bind(null, id)} className="flex-1 sm:flex-initial">
                 <Button variant="primary" type="submit" className="w-full">
                   <RefreshCw className="w-4 h-4" />
-                  <span>Renovar $65.000</span>
+                  <span>Renovar {formatCOP(FIXED_FEE_COP)}</span>
                 </Button>
               </form>
 
@@ -170,74 +115,21 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               Información del Cliente
             </h2>
 
-            <form action={updateClientAction} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-ink-700 mb-1">Nombre Completo</label>
-                <input
-                  type="text"
-                  name="name"
-                  defaultValue={client.name}
-                  required
-                  className="w-full px-3.5 py-2 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-ink-700 mb-1">Edad</label>
-                  <input
-                    type="number"
-                    name="age"
-                    defaultValue={client.age || ''}
-                    className="w-full px-3.5 py-2 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-ink-700 mb-1">Teléfono</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    defaultValue={client.phone}
-                    required
-                    className="w-full px-3.5 py-2 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-700 mb-1">Dirección</label>
-                <input
-                  type="text"
-                  name="address"
-                  defaultValue={client.address || ''}
-                  className="w-full px-3.5 py-2 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-700 mb-1">Método de Pago Habitual</label>
-                <select
-                  name="payment_method"
-                  defaultValue={client.payment_method}
-                  className="w-full px-3.5 py-2 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500 bg-white"
-                >
-                  <option value="EFECTIVO">Efectivo</option>
-                  <option value="NEQUI">Nequi</option>
-                  <option value="DAVPLATA">Daviplata</option>
-                  <option value="PSE">PSE / Transferencia</option>
-                  <option value="OTRO">Otro</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <Button variant="primary" size="sm" type="submit">
-                  Guardar Cambios
-                </Button>
-              </div>
-            </form>
+            <ClientForm
+              action={updateClientAction.bind(null, id)}
+              mode="edit"
+              submitLabel="Guardar Cambios"
+              defaultValues={{
+                name: client.name,
+                age: client.age,
+                phone: client.phone,
+                address: client.address,
+                payment_method: client.payment_method,
+              }}
+            />
 
             <div className="pt-4 border-t border-ink-100 flex justify-end">
-              <form action={softDeleteAction}>
+              <form action={softDeleteClientAction.bind(null, id)}>
                 <Button variant="danger" size="sm" type="submit">
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Eliminar Cliente</span>
@@ -250,7 +142,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <div className="space-y-4">
             <Card className="space-y-3 bg-brand-50/50 border-brand-200">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-800">Suscripción Actual</h3>
-              <div className="text-2xl font-bold text-brand-900">$65.000 COP</div>
+              <div className="text-2xl font-bold text-brand-900">{formatCOP(FIXED_FEE_COP)} COP</div>
               <div className="space-y-1 text-xs text-ink-700">
                 <p>Último pago: <strong>{formatDate(lastPay)}</strong></p>
                 <p>Vence el: <strong>{formatDate(next_expiration)}</strong></p>
