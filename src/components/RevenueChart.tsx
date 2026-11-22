@@ -18,7 +18,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
             tickFormatter={(v) => `$${v / 1000}k`}
           />
           <Tooltip
-            formatter={(value: any) => [formatCOP(Number(value)), 'Ingresos']}
+            formatter={(value) => [formatCOP(Number(value)), 'Ingresos']}
             labelFormatter={(label) => `Mes: ${label}`}
             contentStyle={{
               backgroundColor: '#14181f',

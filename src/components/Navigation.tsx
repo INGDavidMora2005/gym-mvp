@@ -9,6 +9,7 @@ import {
   UserPlus,
   Dumbbell,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export function Navigation({ ownerName }: { ownerName?: string }) {
   return (
@@ -90,7 +91,7 @@ function NavigationItem({
   isActive,
 }: {
   href: string;
-  icon: any;
+  icon: LucideIcon;
   label: string;
   isActive: boolean;
 }) {

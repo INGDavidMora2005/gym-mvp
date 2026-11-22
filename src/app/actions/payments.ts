@@ -14,6 +14,23 @@ export async function renewClientAction(clientId: string) {
   }
 
   const supabase = createSupabaseAdminClient();
+
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('id', clientId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (clientError) {
+    console.error('[renewClientAction:client]', clientError.message);
+    throw new Error('No se pudo renovar la suscripción. Intenta de nuevo.');
+  }
+
+  if (!client) {
+    throw new Error('No se pudo renovar la suscripción. Intenta de nuevo.');
+  }
+
   const { error } = await supabase.from('membership_payments').insert({
     client_id: clientId,
     amount_cop: FIXED_FEE_COP,

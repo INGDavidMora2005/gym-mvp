@@ -13,6 +13,23 @@ export async function recordAttendanceAction(clientId: string) {
   }
 
   const supabase = createSupabaseAdminClient();
+
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('id', clientId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (clientError) {
+    console.error('[recordAttendanceAction:client]', clientError.message);
+    throw new Error('No se pudo registrar la asistencia. Intenta de nuevo.');
+  }
+
+  if (!client) {
+    throw new Error('No se pudo registrar la asistencia. Intenta de nuevo.');
+  }
+
   const { error } = await supabase.from('attendance').insert({
     client_id: clientId,
     check_in: new Date().toISOString(),

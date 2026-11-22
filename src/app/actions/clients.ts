@@ -68,9 +68,21 @@ export async function createClientAction(
 
     if (paymentError) {
       console.error('[createClientAction:initial-payment]', paymentError.message);
+
+      // Rollback manual: si no se puede registrar el pago, el cliente no debe quedar creado.
+      const { error: rollbackError } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', client.id);
+
+      if (rollbackError) {
+        console.error('[createClientAction:rollback]', rollbackError.message);
+      }
+
       return {
         ok: false,
-        error: 'Cliente creado, pero falló el pago inicial',
+        error:
+          'No se pudo registrar el pago inicial. El cliente no fue creado, intenta de nuevo.',
       };
     }
   }
@@ -96,7 +108,7 @@ export async function updateClientAction(
   }
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('clients')
     .update({
       name: parsed.data.name,
@@ -105,7 +117,9 @@ export async function updateClientAction(
       address: parsed.data.address,
       payment_method: parsed.data.payment_method,
     })
-    .eq('id', clientId);
+    .eq('id', clientId)
+    .eq('active', true)
+    .select('id');
 
   if (error) {
     console.error('[updateClientAction]', error.message);
@@ -118,6 +132,10 @@ export async function updateClientAction(
     }
 
     return { ok: false, error: 'No se pudo guardar. Intenta de nuevo.' };
+  }
+
+  if (!updated || updated.length === 0) {
+    return { ok: false, error: 'El cliente no existe o fue eliminado.' };
   }
 
   revalidatePath(`/clients/${clientId}`);
@@ -134,14 +152,20 @@ export async function softDeleteClientAction(clientId: string) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
     .from('clients')
     .update({ active: false })
-    .eq('id', clientId);
+    .eq('id', clientId)
+    .eq('active', true)
+    .select('id');
 
   if (error) {
     console.error('[softDeleteClientAction]', error.message);
     throw new Error('No se pudo eliminar el cliente. Intenta de nuevo.');
+  }
+
+  if (!deleted || deleted.length === 0) {
+    throw new Error('El cliente no existe o fue eliminado.');
   }
 
   revalidatePath('/dashboard');

@@ -47,7 +47,11 @@ gym-app/
 ├── sql/
 │   ├── schema.sql            # Instalación limpia: tablas, índices y RLS deny-all
 │   └── migrations/
-│       └── 001_endurecimiento.sql  # Endurecimiento para bases ya existentes
+│       ├── 001_endurecimiento.sql  # Endurecimiento para bases ya existentes
+│       └── 002_normalizar_telefonos.sql  # Normaliza teléfonos a 10 dígitos
+├── .github/
+│   └── workflows/
+│       └── ci.yml            # CI: typecheck, tests y build en cada push/PR
 ├── src/
 │   ├── app/
 │   │   ├── auth/login/       # Pantalla de inicio de sesión (Server Action)
@@ -153,6 +157,13 @@ deny-all, elimina las políticas antiguas, revoca permisos de `anon` y `authenti
 elimina los objetos obsoletos de la autenticación anterior y crea el índice único de
 email sin distinguir mayúsculas.
 
+Después ejecuta `sql/migrations/002_normalizar_telefonos.sql` para convertir los
+teléfonos existentes a la forma canónica de 10 dígitos (`^3[0-9]{9}$`). Es idempotente,
+corre en una sola transacción y no borra ni fusiona clientes: si la normalización
+generaría teléfonos duplicados, aborta y muestra una consulta para resolverlos a mano.
+Las filas con teléfonos que no cumplen el patrón se dejan intactas y se reportan por
+consola (`RAISE NOTICE`).
+
 ---
 
 ### 5. Iniciar el Servidor de Desarrollo
@@ -171,6 +182,17 @@ Abre tu navegador en [http://localhost:3000](http://localhost:3000) e ingresa co
 - `npm run build`: Compila el proyecto para producción.
 - `npm run start`: Inicia el servidor de producción previamente compilado.
 - `npm run lint`: Ejecuta el linter de código.
+- `npm test`: Ejecuta las pruebas unitarias con Vitest.
+
+---
+
+## 🔄 Integración Continua (CI)
+
+El workflow `.github/workflows/ci.yml` se ejecuta en cada push a `master` y en cada
+pull request. Con Node.js 22 instala dependencias con `npm ci` (caché de npm
+habilitada) y ejecuta, en orden: `npx tsc --noEmit`, `npm test` y `npm run build`.
+El build usa variables de entorno falsas solo para compilar; no se guardan secretos
+reales en el repositorio.
 
 ---
 
