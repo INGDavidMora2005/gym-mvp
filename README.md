@@ -36,7 +36,7 @@ La aplicación resuelve las necesidades clave de operación diaria:
 - **Estilos & UI:** Tailwind CSS, Lucide React (íconos)
 - **Gráficos:** Recharts
 - **Base de Datos & Backend:** [Supabase](https://supabase.com/) (PostgreSQL)
-- **Autenticación & Seguridad:** `bcryptjs` + Cookies HTTP-Only
+- **Autenticación & Seguridad:** Supabase Auth + `@supabase/ssr` (sesión en cookies + middleware)
 
 ---
 
@@ -48,10 +48,7 @@ gym-app/
 │   └── schema.sql            # Script SQL de tablas, índices y vistas para Supabase
 ├── src/
 │   ├── app/
-│   │   ├── api/
-│   │   │   └── auth/         # API Routes para login y logout
-│   │   ├── attendance/       # Vista de control de asistencia diaria
-│   │   ├── auth/login/       # Pantalla de inicio de sesión
+│   │   ├── auth/login/       # Pantalla de inicio de sesión (Server Action)
 │   │   ├── clients/          # Fichas de cliente (alta, edición, historial)
 │   │   ├── dashboard/        # Dashboard principal con métricas e indicadores
 │   │   ├── expirations/      # Vista de alertas de vencimientos
@@ -105,12 +102,14 @@ Crea un archivo `.env.local` en la raíz del proyecto basándote en `.env.exampl
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-anonima-publica
-SUPABASE_SERVICE_ROLE_KEY=tu-clave-service-role-secreta
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-publica
+SUPABASE_SERVICE_ROLE_KEY=tu-clave-secreta
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-> **Nota:** Puedes obtener las llaves en Supabase desde **Settings > API**.
+> **Nota:** Puedes obtener las llaves en Supabase desde **Settings > API Keys**.
+> La clave pública (anon/publishable) se usa en el navegador y el middleware; la secreta
+> (service_role/secret) solo en el servidor. Si rotas las llaves, actualiza **ambas**.
 
 ---
 
@@ -122,14 +121,17 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
    - `clients`
    - `membership_payments`
    - `attendance`
-3. Registra a los dueños en la tabla `owners` asignando un hash bcrypt a `password_hash` (o usando un script Node.js):
+3. Crea los dueños en **Authentication > Users** (email + contraseña). Después registra
+   esos mismos usuarios en la tabla `owners`, usando el mismo email:
 
 ```sql
-insert into owners (id, name, email, password_hash) values
-  (gen_random_uuid(), 'Padre', 'padre@ejemplo.com', 'HASH_BCRYPT_AQUI'),
-  (gen_random_uuid(), 'Esposa', 'esposa@ejemplo.com', 'HASH_BCRYPT_AQUI'),
-  (gen_random_uuid(), 'Hija', 'hija@ejemplo.com', 'HASH_BCRYPT_AQUI');
+insert into owners (id, name, email)
+select id, split_part(email, '@', 1), email
+from auth.users
+where email in ('padre@ejemplo.com', 'esposa@ejemplo.com', 'hija@ejemplo.com');
 ```
+
+> El login lo gestiona Supabase Auth; `owners` solo define quién tiene acceso al panel.
 
 ---
 

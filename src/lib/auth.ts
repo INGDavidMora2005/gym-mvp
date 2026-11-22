@@ -2,29 +2,32 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from './supabase/server';
 import { createSupabaseAdminClient } from './supabase/admin';
 
-// Helper para obtener el dueño actual
+// Devuelve el dueño autenticado o null si no hay sesión válida
+// o si el usuario no está registrado en la tabla `owners`.
 export async function getCurrentOwner() {
   const supabase = await createSupabaseServerClient();
-  
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user || !user.email) return null;
 
-  // Buscar dueño por email
-  const { data: owner, error: ownerErr } = await createSupabaseAdminClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user?.email) return null;
+
+  const { data: owner, error: ownerError } = await createSupabaseAdminClient()
     .from('owners')
     .select('*')
     .eq('email', user.email.toLowerCase())
     .maybeSingle();
 
-  if (ownerErr || !owner) return null;
+  if (ownerError || !owner) return null;
+
   return owner;
 }
 
-// Requerir dueño (redirige si no hay)
+// Exige sesión de dueño; redirige al login si no la hay.
 export async function requireOwner() {
   const owner = await getCurrentOwner();
-  if (!owner) {
-    redirect('/auth/login');
-  }
+  if (!owner) redirect('/auth/login');
   return owner;
 }

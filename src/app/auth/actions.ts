@@ -2,14 +2,17 @@
 
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getCurrentOwner } from '@/lib/auth';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export type LoginState = {
   error?: string;
 } | null;
 
-export async function loginAction(prevState: LoginState, formData: FormData): Promise<LoginState> {
-  const email = (formData.get('email') as string | null)?.trim();
+export async function loginAction(
+  prevState: LoginState,
+  formData: FormData
+): Promise<LoginState> {
+  const email = (formData.get('email') as string | null)?.trim().toLowerCase();
   const password = (formData.get('password') as string | null)?.trim();
 
   if (!email || !password) {
@@ -23,15 +26,26 @@ export async function loginAction(prevState: LoginState, formData: FormData): Pr
     password,
   });
 
-  if (error || !data.user) {
+  if (error || !data.user?.email) {
     return { error: 'Credenciales inválidas' };
   }
 
-  // Verificar si el usuario autenticado pertenece a la tabla owners
-  const owner = await getCurrentOwner();
+  // El usuario debe existir también en la tabla `owners`.
+  const { data: owner, error: ownerError } = await createSupabaseAdminClient()
+    .from('owners')
+    .select('id')
+    .eq('email', data.user.email.toLowerCase())
+    .maybeSingle();
+
+  if (ownerError) {
+    // Sin detalle al usuario, pero con rastro en el servidor.
+    console.error('Error consultando owners:', ownerError.message);
+    return { error: 'Error del servidor. Intenta de nuevo.' };
+  }
+
   if (!owner) {
     await supabase.auth.signOut();
-    return { error: 'Credenciales inválidas' };
+    return { error: 'Acceso no autorizado' };
   }
 
   redirect('/dashboard');
