@@ -6,6 +6,7 @@ import { recordAttendanceAction } from '@/app/actions/attendance';
 import { CalendarCheck, CheckCircle } from 'lucide-react';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { startOfBogotaDay } from '@/lib/dates';
+import { formatDate } from '@/lib/utils';
 
 export const revalidate = 0;
 
