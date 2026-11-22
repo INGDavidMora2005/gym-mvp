@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireOwner } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { startOfBogotaDay, addDays } from '@/lib/dates';
 import { uuidSchema } from '@/lib/validation';
 
 export async function recordAttendanceAction(clientId: string) {
@@ -30,14 +31,40 @@ export async function recordAttendanceAction(clientId: string) {
     throw new Error('No se pudo registrar la asistencia. Intenta de nuevo.');
   }
 
+  // Idempotencia por día de Bogotá: si ya hay una asistencia hoy, no insertar otra.
+  const now = new Date();
+  const dayStart = startOfBogotaDay(now);
+  const dayEnd = addDays(dayStart, 1);
+
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('id')
+    .eq('client_id', clientId)
+    .gte('check_in', dayStart.toISOString())
+    .lt('check_in', dayEnd.toISOString())
+    .maybeSingle();
+
+  if (existing) {
+    revalidatePath('/attendance');
+    revalidatePath('/dashboard');
+    return;
+  }
+
   const { error } = await supabase.from('attendance').insert({
     client_id: clientId,
-    check_in: new Date().toISOString(),
+    check_in: now.toISOString(),
     recorded_by: owner.name,
   });
 
   if (error) {
     console.error('[recordAttendanceAction]', error.message);
+    // El índice único attendance_client_day_idx hace que un doble clic simultáneo
+    // falle con 23505: se trata como ya registrada hoy.
+    if (error.code === '23505') {
+      revalidatePath('/attendance');
+      revalidatePath('/dashboard');
+      return;
+    }
     throw new Error('No se pudo registrar la asistencia. Intenta de nuevo.');
   }
 

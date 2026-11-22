@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireOwner } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { FIXED_FEE_COP } from '@/lib/utils';
+import { addDays } from '@/lib/dates';
 import {
   type ActionState,
   clientSchema,
@@ -56,12 +57,16 @@ export async function createClientAction(
   }
 
   if (first_payment) {
+    const now = new Date();
+    const period_end = addDays(now, 30);
     const { error: paymentError } = await supabase
       .from('membership_payments')
       .insert({
         client_id: client.id,
         amount_cop: FIXED_FEE_COP,
-        paid_at: new Date().toISOString(),
+        paid_at: now.toISOString(),
+        period_start: now.toISOString(),
+        period_end: period_end.toISOString(),
         recorded_by: owner.name,
         note: 'Pago inicial al registrar',
       });

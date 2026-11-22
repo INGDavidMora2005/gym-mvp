@@ -1,4 +1,5 @@
 import { ClientStatus } from '@/types';
+import { addDays, diffBogotaDays, TIMEZONE } from './dates';
 
 export const FIXED_FEE_COP = 65000;
 export const EXPIRATION_WARNING_DAYS = 5;
@@ -7,31 +8,25 @@ export const EXPIRATION_WARNING_DAYS = 5;
  * Dada una fecha de último pago ISO string, calcula el estado y días restantes.
  * El periodo cubre 30 días a partir de la fecha de pago.
  */
-export function calculateMembershipStatus(lastPaymentAt: string | null): {
+export function calculateMembershipStatus(
+  expiration: string | Date | null,
+  now: Date = new Date(),
+): {
   status: ClientStatus;
   next_expiration: string | null;
   days_left: number | null;
 } {
-  if (!lastPaymentAt) {
-    return { status: 'VENCIDO', next_expiration: null, days_left: null };
+  if (!expiration) {
+    return { status: 'SIN_PAGO', next_expiration: null, days_left: null };
   }
 
-  const payDate = new Date(lastPaymentAt);
-  if (isNaN(payDate.getTime())) {
-    return { status: 'VENCIDO', next_expiration: null, days_left: null };
+  const expDate =
+    typeof expiration === 'string' ? new Date(expiration) : expiration;
+  if (isNaN(expDate.getTime())) {
+    return { status: 'SIN_PAGO', next_expiration: null, days_left: null };
   }
 
-  const expiration = new Date(payDate);
-  expiration.setDate(expiration.getDate() + 30);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const expDateOnly = new Date(expiration);
-  expDateOnly.setHours(0, 0, 0, 0);
-
-  const diffMs = expDateOnly.getTime() - today.getTime();
-  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const daysLeft = diffBogotaDays(now, expDate);
 
   let status: ClientStatus = 'ACTIVO';
   if (daysLeft < 0) {
@@ -42,9 +37,59 @@ export function calculateMembershipStatus(lastPaymentAt: string | null): {
 
   return {
     status,
-    next_expiration: expiration.toISOString(),
+    next_expiration: expDate.toISOString(),
     days_left: daysLeft,
   };
+}
+
+/**
+ * Devuelve el vencimiento de membresía más lejano entre los pagos:
+ * el máximo de (period_end ?? paid_at + 30 días). Null si no hay pagos.
+ */
+export function getMembershipExpiration(
+  payments: { paid_at: string; period_end: string | null }[],
+): Date | null {
+  if (!payments || payments.length === 0) return null;
+
+  let max: Date | null = null;
+  for (const p of payments) {
+    const periodEnd = p.period_end ? new Date(p.period_end) : null;
+    const paidAtPlus30 = addDays(new Date(p.paid_at), 30);
+    const candidate = periodEnd || paidAtPlus30;
+    if (!max || candidate.getTime() > max.getTime()) {
+      max = candidate;
+    }
+  }
+  return max;
+}
+
+/**
+ * Calcula el próximo periodo de membresía.
+ * - Si hay vencimiento futuro, empieza ahí (renovación anticipada extiende).
+ * - Si no, empieza hoy (vencido o sin pagos).
+ * period_end = period_start + 30 días.
+ */
+export function computeNextPeriod(
+  currentExpiration: Date | null,
+  now: Date = new Date(),
+): { period_start: Date; period_end: Date } {
+  const periodStart =
+    currentExpiration && currentExpiration.getTime() > now.getTime()
+      ? currentExpiration
+      : now;
+  return {
+    period_start: periodStart,
+    period_end: addDays(periodStart, 30),
+  };
+}
+
+/**
+ * Recordatorio amable para registrar la primera mensualidad (estado SIN_PAGO).
+ */
+export function generatePendingPaymentMessage(clientName: string): string {
+  return `Hola ${clientName}, te damos la bienvenida al gimnasio. Para activar tu membresía, pasa por recepción y registra tu primera mensualidad de ${formatCOP(
+    FIXED_FEE_COP,
+  )}. ¡Te esperamos para entrenar! 💪`;
 }
 
 /**
@@ -89,16 +134,31 @@ export function formatCOP(amount: number): string {
 }
 
 /**
- * Formatea fechas a formato legible en español.
+ * Formatea una fecha ISO en zona horaria de Bogotá.
  */
 export function formatDate(isoString: string | null): string {
   if (!isoString) return 'Sin fecha';
   const d = new Date(isoString);
   if (isNaN(d.getTime())) return 'Fecha inválida';
   return d.toLocaleDateString('es-CO', {
+    timeZone: TIMEZONE,
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+  });
+}
+
+/**
+ * Formatea la hora de una fecha ISO en zona horaria de Bogotá.
+ */
+export function formatTime(isoString: string | null): string {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('es-CO', {
+    timeZone: TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -127,6 +187,12 @@ export function generateExpirationMessage(
 /**
  * Plantilla para clientes activos que no han asistido en varios días.
  */
-export function generateInactivityMessage(clientName: string, daysAbsent: number): string {
+export function generateInactivityMessage(
+  clientName: string,
+  daysAbsent: number | null,
+): string {
+  if (daysAbsent === null) {
+    return `¡Hola ${clientName}! Te extrañamos en el gimnasio. Aún no has registrado ninguna asistencia. Ven a entrenar y activa tu membresía. ¡Te esperamos! 💪🏻🔥`;
+  }
   return `¡Hola ${clientName}! Te extrañamos en el gimnasio. Han pasado ${daysAbsent} días desde tu última visita. Recuerda que la constancia hace el resultado. ¡Te esperamos hoy! 💪🏻🔥`;
 }

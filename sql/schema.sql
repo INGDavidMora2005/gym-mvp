@@ -86,6 +86,10 @@ create index if not exists idx_attendance_client_check_in
 create index if not exists idx_attendance_check_in
   on public.attendance (check_in desc);
 
+-- Una asistencia por cliente y día de Bogotá (zona horaria America/Bogota).
+create unique index if not exists attendance_client_day_idx
+  on public.attendance (client_id, ((check_in at time zone 'America/Bogota')::date));
+
 -- 5. Seguridad: RLS deny-all para anon/authenticated
 -- No se crean políticas a propósito: la service role omite RLS y es la única
 -- vía de acceso a los datos. La anon key solo se usa para autenticarse.

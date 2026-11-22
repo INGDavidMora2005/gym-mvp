@@ -2,9 +2,15 @@
 
 import { useState } from 'react';
 import { Search, RefreshCw, MessageCircle, Phone, UserCheck, Calendar } from 'lucide-react';
-import { ClientWithStatus } from '@/types';
-import { StatusBadge, Button } from './UIComponents';
-import { formatDate, buildWhatsAppUrl, generateExpirationMessage, FIXED_FEE_COP, formatCOP } from '@/lib/utils';
+import { ClientStatus, ClientWithStatus } from '@/types';
+import { StatusBadge, Button } from './UIComponents';import {
+  formatDate,
+  buildWhatsAppUrl,
+  generateExpirationMessage,
+  generatePendingPaymentMessage,
+  FIXED_FEE_COP,
+  formatCOP,
+} from '@/lib/utils';
 import Link from 'next/link';
 
 export function ClientList({
@@ -17,7 +23,7 @@ export function ClientList({
   onRecordAttendance: (clientId: string) => Promise<void>;
 }) {
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'TODOS' | 'ACTIVO' | 'POR_VENCER' | 'VENCIDO'>('TODOS');
+  const [filterStatus, setFilterStatus] = useState<'TODOS' | 'ACTIVO' | 'POR_VENCER' | 'VENCIDO' | 'SIN_PAGO'>('TODOS');
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const filtered = initialClients.filter((c) => {
@@ -64,7 +70,7 @@ export function ClientList({
         </div>
 
         <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          {(['TODOS', 'ACTIVO', 'POR_VENCER', 'VENCIDO'] as const).map((st) => (
+          {(['TODOS', 'ACTIVO', 'POR_VENCER', 'VENCIDO', 'SIN_PAGO'] as const).map((st) => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
@@ -74,7 +80,15 @@ export function ClientList({
                   : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
               }`}
             >
-              {st === 'TODOS' ? 'Todos' : st === 'ACTIVO' ? 'Activos' : st === 'POR_VENCER' ? 'Por Vencer' : 'Vencidos'}
+              {st === 'TODOS'
+                ? 'Todos'
+                : st === 'ACTIVO'
+                ? 'Activos'
+                : st === 'POR_VENCER'
+                ? 'Por Vencer'
+                : st === 'VENCIDO'
+                ? 'Vencidos'
+                : 'Sin pago'}
             </button>
           ))}
         </div>
@@ -85,7 +99,9 @@ export function ClientList({
         {filtered.map((c) => {
           const waUrl = buildWhatsAppUrl(
             c.phone,
-            generateExpirationMessage(c.name, c.days_left, c.next_expiration)
+            c.status === 'SIN_PAGO'
+              ? generatePendingPaymentMessage(c.name)
+              : generateExpirationMessage(c.name, c.days_left, c.next_expiration)
           );
 
           return (
@@ -112,16 +128,25 @@ export function ClientList({
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-ink-400" />
                     <span>
-                      Vence: <strong className="text-ink-800">{formatDate(c.next_expiration)}</strong>
+                      Vence:{" "}
+                      <strong className="text-ink-800">
+                        {c.days_left !== null
+                          ? formatDate(c.next_expiration)
+                          : 'Sin pagos registrados'}
+                      </strong>
                     </span>
                   </div>
-                  {c.days_left !== null && (
+                  {c.days_left !== null ? (
                     <p className="text-[11px] text-ink-500 pl-5">
                       {c.days_left < 0
                         ? `Vencido hace ${Math.abs(c.days_left)} días`
                         : c.days_left === 0
                         ? '¡Vence HOY!'
                         : `Quedan ${c.days_left} días de suscripción`}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-ink-500 pl-5">
+                      Sin pagos registrados
                     </p>
                   )}
                 </div>

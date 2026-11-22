@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { calculateMembershipStatus, formatDate, formatCOP, buildWhatsAppUrl, generateExpirationMessage, FIXED_FEE_COP } from '@/lib/utils';
+import { calculateMembershipStatus, getMembershipExpiration, formatDate, formatTime, formatCOP, buildWhatsAppUrl, generateExpirationMessage, FIXED_FEE_COP } from '@/lib/utils';
 import { Navigation } from '@/components/Navigation';
 import { Card, Button, StatusBadge } from '@/components/UIComponents';
 import { ClientForm } from '@/components/ClientForm';
@@ -56,8 +56,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     throw new Error('No se pudieron cargar las asistencias.');
   }
 
-  const lastPay = payments && payments.length > 0 ? payments[0].paid_at : null;
-  const { status, next_expiration, days_left } = calculateMembershipStatus(lastPay);
+  const expiration = getMembershipExpiration(payments || []);
+  const { status, next_expiration, days_left } = calculateMembershipStatus(expiration);
+  const lastPay = payments?.[0]?.paid_at || null;
 
   const waUrl = buildWhatsAppUrl(
     client.phone,
@@ -194,7 +195,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   <div key={a.id} className="text-xs text-ink-700 flex justify-between py-1 border-b border-ink-100 last:border-0">
                     <span>{formatDate(a.check_in)}</span>
                     <span className="text-ink-500 font-mono text-[11px]">
-                      {new Date(a.check_in).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                      {formatTime(a.check_in)}
                     </span>
                   </div>
                 ))}

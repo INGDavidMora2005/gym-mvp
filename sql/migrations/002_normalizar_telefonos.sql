@@ -22,20 +22,24 @@
 --
 -- Consulta de ejemplo para listar los duplicados que bloquean la migración:
 --
---   select
---     case
---       when length(regexp_replace(phone, '[^0-9]', '', 'g')) = 12
---        and left(regexp_replace(phone, '[^0-9]', '', 'g'), 2) = '57'
---       then substr(regexp_replace(phone, '[^0-9]', '', 'g'), 3)
---       else regexp_replace(phone, '[^0-9]', '', 'g')
---     end as telefono_normalizado,
---     count(*) as clientes,
---     array_agg(id order by created_at) as client_ids,
---     array_agg(phone order by created_at) as telefonos_originales
---   from public.clients
---   group by 1
+--   select telefono_normalizado, count(*) as clientes,
+--          array_agg(client_id) as client_ids,
+--          array_agg(telefono_original) as telefonos_originales
+--   from (
+--     select
+--       id as client_id,
+--       phone as telefono_original,
+--       case
+--         when length(regexp_replace(phone, '[^0-9]', '', 'g')) = 12
+--          and left(regexp_replace(phone, '[^0-9]', '', 'g'), 2) = '57'
+--         then substr(regexp_replace(phone, '[^0-9]', '', 'g'), 3)
+--         else regexp_replace(phone, '[^0-9]', '', 'g')
+--       end as telefono_normalizado
+--     from public.clients
+--   ) normalizados
+--   where telefono_normalizado ~ '^3[0-9]{9}$'
+--   group by telefono_normalizado
 --   having count(*) > 1
---      and telefono_normalizado ~ '^3[0-9]{9}$'
 --   order by 1;
 --
 --   Resuelve cada caso a mano (corrigiendo el teléfono de uno de los clientes)

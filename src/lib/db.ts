@@ -1,9 +1,22 @@
 import { createSupabaseAdminClient } from './supabase/admin';
-import { calculateMembershipStatus } from './utils';
-import { ClientWithStatus, DashboardStats, RevenuePoint } from '@/types';
+import {
+  getMembershipExpiration,
+  calculateMembershipStatus,
+} from './utils';
+import {
+  startOfBogotaMonth,
+  bogotaMonthKey,
+  diffBogotaDays,
+} from './dates';
+import {
+  ClientWithStatus,
+  DashboardStats,
+  RevenuePoint,
+} from '@/types';
 
 export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
   const supabase = createSupabaseAdminClient();
+  const now = new Date();
 
   const { data: clients, error: errClients } = await supabase
     .from('clients')
@@ -20,10 +33,10 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
     throw new Error('No se pudieron cargar los clientes.');
   }
 
-  // Obtener los pagos más recientes de cada cliente
+  // Pagos con paid_at y period_end para calcular el vencimiento real.
   const { data: payments, error: errPayments } = await supabase
     .from('membership_payments')
-    .select('client_id, paid_at')
+    .select('client_id, paid_at, period_end')
     .order('paid_at', { ascending: false });
 
   if (errPayments) {
@@ -31,16 +44,20 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
     throw new Error('No se pudieron cargar los pagos.');
   }
 
-  const paymentMap: Record<string, string> = {};
+  const paymentsByClient: Record<string, { paid_at: string; period_end: string | null }[]> = {};
   if (payments) {
     for (const p of payments) {
-      if (!paymentMap[p.client_id]) {
-        paymentMap[p.client_id] = p.paid_at;
+      if (!paymentsByClient[p.client_id]) {
+        paymentsByClient[p.client_id] = [];
       }
+      paymentsByClient[p.client_id].push({
+        paid_at: p.paid_at,
+        period_end: p.period_end,
+      });
     }
   }
 
-  // Obtener la última asistencia y total de asistencias del mes
+  // Asistencias: última y conteo del mes de Bogotá.
   const { data: attendances, error: errAttendances } = await supabase
     .from('attendance')
     .select('client_id, check_in')
@@ -53,30 +70,31 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
 
   const lastAttendanceMap: Record<string, string> = {};
   const monthAttendanceMap: Record<string, number> = {};
-
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  const currentMonthKey = bogotaMonthKey(now);
 
   if (attendances) {
     for (const a of attendances) {
       if (!lastAttendanceMap[a.client_id]) {
         lastAttendanceMap[a.client_id] = a.check_in;
       }
-      const cDate = new Date(a.check_in);
-      if (cDate.getMonth() === currentMonth && cDate.getFullYear() === currentYear) {
+      if (bogotaMonthKey(new Date(a.check_in)) === currentMonthKey) {
         monthAttendanceMap[a.client_id] = (monthAttendanceMap[a.client_id] || 0) + 1;
       }
     }
   }
 
   return clients.map((c) => {
-    const lastPay = paymentMap[c.id] || null;
-    const { status, next_expiration, days_left } = calculateMembershipStatus(lastPay);
+    const clientPayments = paymentsByClient[c.id] || [];
+    const expiration = getMembershipExpiration(clientPayments);
+    const { status, next_expiration, days_left } = calculateMembershipStatus(
+      expiration,
+      now,
+    );
+
     return {
       ...c,
       status,
-      last_payment_at: lastPay,
+      last_payment_at: clientPayments[0]?.paid_at || null,
       next_expiration,
       days_left,
       last_attendance: lastAttendanceMap[c.id] || null,
@@ -87,24 +105,35 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const clients = await fetchClientsWithStatus();
+  const now = new Date();
 
   let activeCount = 0;
   let expiringCount = 0;
   let expiredCount = 0;
+  let noPaymentCount = 0;
 
   const notReturned: ClientWithStatus[] = [];
-  const now = new Date();
 
   for (const c of clients) {
     if (c.status === 'ACTIVO') activeCount++;
     else if (c.status === 'POR_VENCER') expiringCount++;
     else if (c.status === 'VENCIDO') expiredCount++;
+    else if (c.status === 'SIN_PAGO') noPaymentCount++;
 
-    // Clientes activos que no han asistido en más de 14 días
-    if (c.status !== 'VENCIDO' && c.last_attendance) {
-      const last = new Date(c.last_attendance);
-      const diffDays = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays >= 14) {
+    // Clientes ACTIVO o POR_VENCER sin asistir >= 14 días (Bogotá).
+    if (c.status === 'ACTIVO' || c.status === 'POR_VENCER') {
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+      const hasRecentAttendance =
+        c.last_attendance &&
+        diffBogotaDays(new Date(c.last_attendance), now) < 14;
+      const registeredLongAgo =
+        diffBogotaDays(new Date(c.created_at), now) >= 14;
+
+      const shouldNotify =
+        (!hasRecentAttendance && c.last_attendance) ||
+        (!c.last_attendance && registeredLongAgo);
+
+      if (shouldNotify) {
         notReturned.push(c);
       }
     }
@@ -112,15 +141,17 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
   const supabase = createSupabaseAdminClient();
 
-  // Calcular ingresos del mes actual y mes anterior
-  const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+  // Ingresos del mes actual y mes anterior en zona horaria de Bogotá.
+  const thisMonthStart = startOfBogotaMonth(now, 0);
+  const thisMonthEnd = startOfBogotaMonth(now, 1);
+  const lastMonthStart = startOfBogotaMonth(now, -1);
+  const lastMonthEnd = startOfBogotaMonth(now, 0);
 
   const { data: thisMonthPays, error: errThisMonthPays } = await supabase
     .from('membership_payments')
     .select('amount_cop')
-    .gte('paid_at', firstDayThisMonth);
+    .gte('paid_at', thisMonthStart.toISOString())
+    .lt('paid_at', thisMonthEnd.toISOString());
 
   if (errThisMonthPays) {
     console.error('[fetchDashboardStats:this-month-payments]', errThisMonthPays.message);
@@ -130,8 +161,8 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const { data: lastMonthPays, error: errLastMonthPays } = await supabase
     .from('membership_payments')
     .select('amount_cop')
-    .gte('paid_at', firstDayLastMonth)
-    .lte('paid_at', lastDayLastMonth);
+    .gte('paid_at', lastMonthStart.toISOString())
+    .lt('paid_at', lastMonthEnd.toISOString());
 
   if (errLastMonthPays) {
     console.error('[fetchDashboardStats:last-month-payments]', errLastMonthPays.message);
@@ -141,31 +172,43 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const revenueThisMonth = (thisMonthPays || []).reduce((acc, p) => acc + p.amount_cop, 0);
   const revenueLastMonth = (lastMonthPays || []).reduce((acc, p) => acc + p.amount_cop, 0);
 
-  // Total asistencias del mes
+  // Asistencia del mes actual (Bogotá) para tasa de asistencia.
   const { count: attendanceThisMonth, error: errAttendanceCount } = await supabase
     .from('attendance')
     .select('id', { count: 'exact', head: true })
-    .gte('check_in', firstDayThisMonth);
+    .gte('check_in', thisMonthStart.toISOString())
+    .lt('check_in', thisMonthEnd.toISOString());
 
   if (errAttendanceCount) {
     console.error('[fetchDashboardStats:attendance]', errAttendanceCount.message);
     throw new Error('No se pudieron cargar las métricas.');
   }
 
+  const totalEligible = activeCount + expiringCount;
+  const attendedEligible = clients.filter(
+    (c) =>
+      (c.status === 'ACTIVO' || c.status === 'POR_VENCER') &&
+      (c.attendance_this_month || 0) > 0,
+  ).length;
+
   return {
     total_clients: clients.length,
     active_clients: activeCount,
     expiring_this_week: expiringCount,
     expired_clients: expiredCount,
+    no_payment_clients: noPaymentCount,
     revenue_this_month: revenueThisMonth,
     revenue_last_month: revenueLastMonth,
     attendance_this_month: attendanceThisMonth || 0,
+    attendance_rate: { attended: attendedEligible, total: totalEligible },
     not_returned: notReturned,
   };
 }
 
 export async function fetchMonthlyRevenue(monthsCount: number = 6): Promise<RevenuePoint[]> {
   const supabase = createSupabaseAdminClient();
+  const now = new Date();
+
   const { data: payments, error } = await supabase
     .from('membership_payments')
     .select('paid_at, amount_cop')
@@ -176,20 +219,24 @@ export async function fetchMonthlyRevenue(monthsCount: number = 6): Promise<Reve
     throw new Error('No se pudieron cargar los ingresos.');
   }
 
+  // Etiquetas de los últimos N meses en Bogotá.
   const monthMap: Record<string, { revenue: number; count: number; label: string }> = {};
 
-  const now = new Date();
   for (let i = monthsCount - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+    const monthStart = startOfBogotaMonth(now, -i);
+    const key = bogotaMonthKey(monthStart);
+    const d = new Date(monthStart);
+    const label = d.toLocaleDateString('es-CO', {
+      timeZone: 'America/Bogota',
+      month: 'short',
+      year: '2-digit',
+    });
     monthMap[key] = { revenue: 0, count: 0, label };
   }
 
   if (payments) {
     for (const p of payments) {
-      const d = new Date(p.paid_at);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const key = bogotaMonthKey(new Date(p.paid_at));
       if (monthMap[key]) {
         monthMap[key].revenue += p.amount_cop;
         monthMap[key].count += 1;

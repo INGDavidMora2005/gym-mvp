@@ -1,6 +1,6 @@
 export type PaymentMethod = 'EFECTIVO' | 'PSE' | 'NEQUI' | 'DAVPLATA' | 'OTRO';
 
-export type ClientStatus = 'ACTIVO' | 'POR_VENCER' | 'VENCIDO';
+export type ClientStatus = 'ACTIVO' | 'POR_VENCER' | 'VENCIDO' | 'SIN_PAGO';
 
 export interface Owner {
   id: string;
@@ -55,9 +55,11 @@ export interface DashboardStats {
   active_clients: number;
   expiring_this_week: number;
   expired_clients: number;
+  no_payment_clients: number;
   revenue_this_month: number;
   revenue_last_month: number;
   attendance_this_month: number;
+  attendance_rate: { attended: number; total: number };
   not_returned: ClientWithStatus[];
 }
 

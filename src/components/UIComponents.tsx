@@ -1,4 +1,5 @@
 import React from 'react';
+import { ClientStatus } from '@/types';
 
 export function Card({
   children,
@@ -58,17 +59,26 @@ export function Button({
   );
 }
 
-export function StatusBadge({ status }: { status: 'ACTIVO' | 'POR_VENCER' | 'VENCIDO' }) {
-  const styles = {
+export function StatusBadge({ status }: { status: ClientStatus }) {
+  const styles: Record<ClientStatus, string> = {
     ACTIVO: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     POR_VENCER: 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse-soft',
     VENCIDO: 'bg-rose-50 text-rose-700 border-rose-200',
+    SIN_PAGO: 'bg-ink-50 text-ink-700 border-ink-200',
   };
 
-  const labels = {
+  const labels: Record<ClientStatus, string> = {
     ACTIVO: 'Activo',
     POR_VENCER: 'Por vencer',
     VENCIDO: 'Vencido',
+    SIN_PAGO: 'Sin pago',
+  };
+
+  const dots: Record<ClientStatus, string> = {
+    ACTIVO: 'bg-emerald-500',
+    POR_VENCER: 'bg-amber-500',
+    VENCIDO: 'bg-rose-500',
+    SIN_PAGO: 'bg-ink-500',
   };
 
   return (
@@ -76,13 +86,7 @@ export function StatusBadge({ status }: { status: 'ACTIVO' | 'POR_VENCER' | 'VEN
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[status]}`}
     >
       <span
-        className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-          status === 'ACTIVO'
-            ? 'bg-emerald-500'
-            : status === 'POR_VENCER'
-            ? 'bg-amber-500'
-            : 'bg-rose-500'
-        }`}
+        className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dots[status]}`}
       />
       {labels[status]}
     </span>

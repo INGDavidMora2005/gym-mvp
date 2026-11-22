@@ -5,6 +5,7 @@ import { Card, Button } from '@/components/UIComponents';
 import { recordAttendanceAction } from '@/app/actions/attendance';
 import { CalendarCheck, CheckCircle } from 'lucide-react';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { startOfBogotaDay } from '@/lib/dates';
 
 export const revalidate = 0;
 
@@ -15,8 +16,7 @@ export default async function AttendancePage() {
 
   // Obtener asistencias registradas HOY
   const supabase = createSupabaseAdminClient();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = startOfBogotaDay(new Date());
 
   const { data: todayAttendances, error: todayAttendancesError } = await supabase
     .from('attendance')
@@ -68,7 +68,7 @@ export default async function AttendancePage() {
                   <h3 className="font-semibold text-ink-900 text-sm">{c.name}</h3>
                   <p className="text-xs text-ink-500">{c.phone}</p>
                   <p className="text-[11px] text-ink-400 mt-1">
-                    Última entrada: {c.last_attendance ? new Date(c.last_attendance).toLocaleDateString('es-CO') : 'Nunca'}
+                    Última entrada: {c.last_attendance ? formatDate(c.last_attendance) : 'Nunca'}
                   </p>
                 </div>
 

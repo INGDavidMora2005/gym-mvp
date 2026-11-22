@@ -164,6 +164,26 @@ generaría teléfonos duplicados, aborta y muestra una consulta para resolverlos
 Las filas con teléfonos que no cumplen el patrón se dejan intactas y se reportan por
 consola (`RAISE NOTICE`).
 
+Luego ejecuta `sql/migrations/003_asistencia_unica_por_dia.sql`, que crea un índice
+único de una asistencia por cliente y día de Bogotá y valida que no existan
+duplicados antes de aplicarlo.
+
+---
+
+## 📋 Reglas de membresía
+
+- **Vigencia:** cada mensualidad cubre 30 días a partir del pago (`period_start` → `period_end`).
+- **Renovación anticipada:** si el cliente aún tiene vigencia, el nuevo periodo empieza cuando termina el actual (no se pierden días restantes). Si está vencido o sin pagos, cuenta desde hoy.
+- **Zona horaria:** todos los vencimientos, asistencias y agrupaciones por mes usan `America/Bogota` (UTC-5 fijo, Colombia no tiene horario de verano).
+- **Estados de membresía:**
+  - `ACTIVO`: tiene vigencia futura (más de 5 días).
+  - `POR_VENCER`: quedan 5 días o menos (incluido hoy, 0 días).
+  - `VENCIDO`: la vigencia ya expiró (días negativos).
+  - `SIN_PAGO`: el cliente no tiene ningún pago registrado.
+- **Migraciones de datos:**
+  - `sql/migrations/002_normalizar_telefonos.sql`: normaliza teléfonos a 10 dígitos colombianos.
+  - `sql/migrations/003_asistencia_unica_por_dia.sql`: evita asistencias duplicadas por cliente y día de Bogotá.
+
 ---
 
 ### 5. Iniciar el Servidor de Desarrollo

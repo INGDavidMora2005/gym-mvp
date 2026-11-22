@@ -7,6 +7,7 @@ import { renewClientAction } from '@/app/actions/payments';
 import { recordAttendanceAction } from '@/app/actions/attendance';
 import { Users, AlertTriangle, CheckCircle, DollarSign, MessageCircle, UserX } from 'lucide-react';
 import { FIXED_FEE_COP, formatCOP, buildWhatsAppUrl, generateInactivityMessage } from '@/lib/utils';
+import { diffBogotaDays } from '@/lib/dates';
 
 export const revalidate = 0;
 
@@ -71,19 +72,30 @@ export default async function DashboardPage() {
           <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2 text-amber-900 font-semibold text-base">
               <UserX className="w-5 h-5 text-amber-600" />
-              <span>Clientes que pagaron pero llevan más de 14 días sin asistir ({stats.not_returned.length})</span>
+              <span>
+                Clientes que pagaron pero llevan 14 días o más sin asistir ({stats.not_returned.length})
+              </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {stats.not_returned.slice(0, 4).map((c) => {
+                const now = new Date();
                 const daysAbsent = c.last_attendance
-                  ? Math.floor((new Date().getTime() - new Date(c.last_attendance).getTime()) / (1000 * 60 * 60 * 24))
-                  : 14;
-                const waUrl = buildWhatsAppUrl(c.phone, generateInactivityMessage(c.name, daysAbsent));
+                  ? diffBogotaDays(new Date(c.last_attendance), now)
+                  : null;
+                const waUrl = buildWhatsAppUrl(
+                  c.phone,
+                  generateInactivityMessage(c.name, daysAbsent),
+                );
                 return (
                   <div key={c.id} className="bg-white p-3.5 rounded-xl border border-amber-200 flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-ink-900 text-sm">{c.name}</p>
-                      <p className="text-xs text-ink-500">Última visita: hace {daysAbsent} días</p>
+                      <p className="text-xs text-ink-500">
+                        Última visita:{' '}
+                        {daysAbsent !== null
+                          ? `hace ${daysAbsent} días`
+                          : 'Aún no ha asistido'}
+                      </p>
                     </div>
                     <a href={waUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-all shadow-xs">
                       <MessageCircle className="w-3.5 h-3.5" /> <span>Motivar</span>
