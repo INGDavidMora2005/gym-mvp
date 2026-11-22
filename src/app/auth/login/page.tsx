@@ -1,43 +1,10 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useActionState } from 'react';
+import { loginAction } from './actions';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || 'Credenciales inválidas');
-        setLoading(false);
-        return;
-      }
-
-      // Redirigir al dashboard
-      router.push('/dashboard');
-    } catch (err) {
-      setError('Error de conexión. Intenta de nuevo.');
-      setLoading(false);
-    }
-  }
+  const [state, formAction, pending] = useActionState(loginAction, null);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-ink-100 p-4">
@@ -50,10 +17,10 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-ink-200 shadow-xs p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
+          <form action={formAction} className="space-y-4">
+            {state?.error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-700">
-                {error}
+                {state.error}
               </div>
             )}
 
@@ -61,10 +28,9 @@ export default function LoginPage() {
               <label className="block text-xs font-medium text-ink-700 mb-1">Correo</label>
               <input
                 type="email"
+                name="email"
                 required
                 placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500"
               />
             </div>
@@ -73,20 +39,19 @@ export default function LoginPage() {
               <label className="block text-xs font-medium text-ink-700 mb-1">Contraseña</label>
               <input
                 type="password"
+                name="password"
                 required
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-sm focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={pending}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
             >
-              {loading ? 'Ingresando...' : 'Acceder'}
+              {pending ? 'Ingresando...' : 'Acceder'}
             </button>
           </form>
         </div>

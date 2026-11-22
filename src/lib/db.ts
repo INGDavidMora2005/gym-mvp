@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from './supabase';
+import { createSupabaseAdminClient } from './supabase/admin';
 import { calculateMembershipStatus } from './utils';
 import { ClientWithStatus, DashboardStats, RevenuePoint } from '@/types';
 

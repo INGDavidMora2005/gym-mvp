@@ -1,7 +1,7 @@
 import Link from 'next/link';
+import { logoutAction } from '@/app/auth/actions';
 import {
   LayoutDashboard,
-  Users,
   CalendarCheck,
   AlertTriangle,
   BarChart3,
@@ -57,10 +57,10 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
               </div>
             )}
 
-            <form action="/api/auth/logout" method="POST">
+            <form action={logoutAction}>
               <button
                 type="submit"
-                title="Clients"
+                title="Cerrar sesión"
                 className="p-2 rounded-xl text-ink-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
               >
                 <LogOut className="w-5 h-5" />
