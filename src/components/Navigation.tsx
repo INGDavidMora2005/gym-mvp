@@ -10,7 +10,7 @@ import {
   Dumbbell,
   Wallet,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { ClientNavItem } from './ClientNavItem';
 
 export function Navigation({ ownerName }: { ownerName?: string }) {
   return (
@@ -34,11 +34,11 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
 
           {/* Navegación Desktop */}
           <nav className="hidden md:flex items-center gap-1">
-            <NavigationItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={false} />
-            <NavigationItem href="/attendance" icon={CalendarCheck} label="Asistencia" isActive={false} />
-            <NavigationItem href="/expirations" icon={AlertTriangle} label="Vencimientos" isActive={false} />
-            <NavigationItem href="/reports" icon={BarChart3} label="Ingresos" isActive={false} />
-            <NavigationItem href="/caja" icon={Wallet} label="Caja" isActive={false} />
+            <ClientNavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+            <ClientNavItem href="/attendance" icon={CalendarCheck} label="Asistencia" />
+            <ClientNavItem href="/expirations" icon={AlertTriangle} label="Vencimientos" />
+            <ClientNavItem href="/reports" icon={BarChart3} label="Ingresos" />
+            <ClientNavItem href="/caja" icon={Wallet} label="Caja" />
           </nav>
 
           {/* Acciones y Perfil */}
@@ -74,39 +74,15 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
       </div>
 
       {/* Navegación Móvil Inferior */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ink-200 shadow-lg px-2 py-2">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ink-200 shadow-lg px-1 py-1">
         <div className="flex justify-around items-center">
-          <NavigationItem href="/dashboard" icon={LayoutDashboard} label="Ini" isActive={false} />
-          <NavigationItem href="/attendance" icon={CalendarCheck} label="Asis" isActive={false} />
-          <NavigationItem href="/expirations" icon={AlertTriangle} label="Venc" isActive={false} />
-          <NavigationItem href="/reports" icon={BarChart3} label="Ingr" isActive={false} />
-          <NavigationItem href="/caja" icon={Wallet} label="Caja" isActive={false} />
+          <ClientNavItem href="/dashboard" icon={LayoutDashboard} label="Inicio" />
+          <ClientNavItem href="/attendance" icon={CalendarCheck} label="Asistencia" />
+          <ClientNavItem href="/expirations" icon={AlertTriangle} label="Vencen" />
+          <ClientNavItem href="/reports" icon={BarChart3} label="Ingresos" />
+          <ClientNavItem href="/caja" icon={Wallet} label="Caja" />
         </div>
       </div>
     </header>
-  );
-}
-
-function NavigationItem({
-  href,
-  icon: Icon,
-  label,
-  isActive,
-}: {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-  isActive: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-xs font-medium transition-all ${
-        isActive ? 'text-brand-600 font-semibold' : 'text-ink-500 hover:text-ink-900'
-      }`}
-    >
-      <Icon className="w-5 h-5" />
-      <span>{label}</span>
-    </Link>
   );
 }

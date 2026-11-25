@@ -6,7 +6,7 @@ import { formatCOP } from '@/lib/utils';
 import { Card } from './UIComponents';
 
 interface CashSummaryProps {
-  payments: MembershipPayment[];
+  payments: (MembershipPayment & { clients: string })[];
   businessDate: string;
   currentExpected: number;
 }
@@ -117,7 +117,7 @@ export function CashSummary({ payments, businessDate, currentExpected }: CashSum
           </h3>
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {payments.map((p) => {
-              const clientName = (p as any).clients?.name || 'Cliente desconocido';
+              const clientName = p.clients;
               const methodLabel = p.payment_method || 'Sin método';
               const isCash = p.payment_method === 'EFECTIVO';
               return (

@@ -90,28 +90,32 @@ export async function closeCashAction(
   const expectedCashCop = (cashPayments || []).reduce((sum, p) => sum + p.amount_cop, 0);
   const differenceCop = countedCashCop - expectedCashCop;
 
-  // Insertar cierre de caja
-  const { error: insertError } = await supabase.from('cash_closings').insert({
-    business_date: businessDateStr,
-    expected_cash_cop: expectedCashCop,
-    counted_cash_cop: countedCashCop,
-    difference_cop: differenceCop,
-    note: note ?? null,
-    closed_by: owner.name,
-    closed_by_id: owner.id,
-  });
+  // Insertar cierre de caja con retorno del ID
+  const { data: inserted, error: insertError } = await supabase
+    .from('cash_closings')
+    .insert({
+      business_date: businessDateStr,
+      expected_cash_cop: expectedCashCop,
+      counted_cash_cop: countedCashCop,
+      difference_cop: differenceCop,
+      note: note ?? null,
+      closed_by: owner.name,
+      closed_by_id: owner.id,
+    })
+    .select('id')
+    .single();
 
   if (insertError) {
     console.error('[closeCashAction:insert]', insertError.message);
     return { ok: false, error: 'No se pudo registrar el cierre. Intenta de nuevo.' };
   }
 
-  // Registrar auditoría
+  // Registrar auditoría con el ID del cierre recién creado
   await logAudit({
     owner,
     action: 'CASH_CLOSED',
     entity: 'cash_closings',
-    entityId: null, // No tenemos el ID del insert, pero los detalles están abajo
+    entityId: inserted?.id ?? null,
     details: {
       business_date: businessDateStr,
       expected_cash_cop: expectedCashCop,

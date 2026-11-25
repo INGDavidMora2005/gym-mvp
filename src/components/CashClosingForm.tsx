@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { useState } from 'react';
 import { closeCashAction } from '@/app/actions/cash';
-import { CashClosing, Owner } from '@/types';
+import { CashClosing } from '@/types';
 import { Card, Button } from './UIComponents';
 import { formatCOP } from '@/lib/utils';
 
@@ -11,10 +11,10 @@ interface CashClosingFormProps {
   businessDate: string;
   expectedCashCop: number;
   latestClosing: CashClosing | null;
-  isLatestForDay: boolean;
+  currentExpected: number;
 }
 
-export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, isLatestForDay }: CashClosingFormProps) {
+export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, currentExpected }: CashClosingFormProps) {
   const [formState, formAction, isPending] = useActionState(closeCashAction, {
     ok: false,
     expected_cash_cop: expectedCashCop,
@@ -39,7 +39,7 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
     lastDifference > 0 ? `Sobrante ${formatCOP(lastDifference)}` :
     `Faltante ${formatCOP(Math.abs(lastDifference))}`;
 
-  const isCurrentClosingStale = isLatestForDay && latestClosing && latestClosing.expected_cash_cop !== expectedCashCop;
+  const isCurrentClosingStale = !!latestClosing && latestClosing.expected_cash_cop !== currentExpected;
 
   return (
     <Card>
@@ -58,9 +58,9 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <p className="text-sm font-medium text-amber-800">El esperado cambió desde el último cierre</p>
+            <p className="text-sm font-medium text-amber-800">El esperado cambió desde el cierre del día</p>
             <p className="text-xs text-amber-700 mt-1">
-              El cierre vigente esperaba {formatCOP(latestClosing.expected_cash_cop)} pero el esperado actual es {formatCOP(expectedCashCop)}.
+              El cierre vigente esperaba {formatCOP(latestClosing.expected_cash_cop)} pero el esperado actual es {formatCOP(currentExpected)}.
               Esto puede pasar si se anuló un pago en efectivo después del cierre.
             </p>
           </div>

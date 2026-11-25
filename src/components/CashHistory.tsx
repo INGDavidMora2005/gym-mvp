@@ -5,19 +5,19 @@ import { Card } from './UIComponents';
 import { formatCOP, formatTime } from '@/lib/utils';
 
 interface CashHistoryProps {
-  closings: CashClosing[];
   dayClosings: CashClosing[];
+  recentClosings: CashClosing[];
   businessDate: string;
   currentExpected: number;
 }
 
-export function CashHistory({ closings, dayClosings, businessDate, currentExpected }: CashHistoryProps) {
-  // El vigente es el primero de la lista (ordenado por created_at desc)
-  const latestClosing = closings[0] || null;
-  const isLatestForDay = latestClosing && latestClosing.business_date === businessDate;
+export function CashHistory({ dayClosings, recentClosings, businessDate, currentExpected }: CashHistoryProps) {
+  // El vigente del día es el primero de dayClosings (si hay), o null si no hay cierres del día
+  const latestClosing = dayClosings[0] || null;
+  const isCurrentClosedToday = !!latestClosing;
 
   // Para el historial, mostramos los del día seleccionado si hay, sino los 10 más recientes
-  const displayClosings = dayClosings.length > 0 ? dayClosings : closings;
+  const displayClosings = dayClosings.length > 0 ? dayClosings : recentClosings;
 
   return (
     <Card>
@@ -33,14 +33,15 @@ export function CashHistory({ closings, dayClosings, businessDate, currentExpect
         )}
       </h3>
 
-      {displayClosings.length === 0 ? (
+      {dayClosings.length === 0 && recentClosings.length === 0 ? (
         <div className="text-center py-8 text-ink-500">
           No hay cierres registrados aún
         </div>
       ) : (
         <div className="space-y-2">
+          {/* Mostrar cierres del día si existen, si no los 10 más recientes globalmente */}
           {displayClosings.map((closing, index) => {
-            const isCurrent = isLatestForDay && index === 0;
+            const isCurrent = isCurrentClosedToday && index === 0;
             const isStale = isCurrent && closing.expected_cash_cop !== currentExpected;
             const differenceColor = closing.difference_cop === 0 ? 'text-emerald-700' :
               closing.difference_cop > 0 ? 'text-amber-700' : 'text-rose-700';

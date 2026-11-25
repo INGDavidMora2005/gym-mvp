@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeCash } from './cash';
+import { summarizeCash, clientNameFrom } from './cash';
 import { PaymentMethod, MembershipPayment } from '@/types';
 
 const basePayment: MembershipPayment = {
@@ -95,5 +95,42 @@ describe('summarizeCash', () => {
     const result = summarizeCash(payments);
     expect(result.byMethod.SIN_METODO).toEqual({ total: 130000, count: 2 });
     expect(result.byMethod.EFECTIVO).toEqual({ total: 0, count: 0 });
+  });
+});
+
+describe('clientNameFrom', () => {
+  it('acepta un objeto con name (relación muchos-a-uno)', () => {
+    expect(clientNameFrom({ name: 'Ana Gómez' })).toBe('Ana Gómez');
+  });
+
+  it('acepta un array con name (relación uno-a-muchos)', () => {
+    expect(clientNameFrom([{ name: 'Ana Gómez' }])).toBe('Ana Gómez');
+  });
+
+  it('devuelve Cliente desconocido para null', () => {
+    expect(clientNameFrom(null)).toBe('Cliente desconocido');
+  });
+
+  it('devuelve Cliente desconocido para undefined', () => {
+    expect(clientNameFrom(undefined)).toBe('Cliente desconocido');
+  });
+
+  it('devuelve Cliente desconocido para array vacío', () => {
+    expect(clientNameFrom([])).toBe('Cliente desconocido');
+  });
+
+  it('devuelve Cliente desconocido si name no es string', () => {
+    expect(clientNameFrom({ name: 123 })).toBe('Cliente desconocido');
+    expect(clientNameFrom([{ name: null }])).toBe('Cliente desconocido');
+  });
+
+  it('devuelve Cliente desconocido si name es string vacío o solo espacios', () => {
+    expect(clientNameFrom({ name: '' })).toBe('Cliente desconocido');
+    expect(clientNameFrom({ name: '   ' })).toBe('Cliente desconocido');
+  });
+
+  it('devuelve Cliente desconocido para valores primitivos', () => {
+    expect(clientNameFrom('texto')).toBe('Cliente desconocido');
+    expect(clientNameFrom(42)).toBe('Cliente desconocido');
   });
 });

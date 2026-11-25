@@ -43,15 +43,21 @@ export function ClientList({
     setRenewPanel({ clientId, habitualMethod });
   };
 
+  const [renewError, setRenewError] = useState<string | null>(null);
+
   const handleRenewConfirm = async (paymentMethod: string) => {
     if (!renewPanel) return;
     const { clientId } = renewPanel;
     setLoadingId(clientId);
+    setRenewError(null);
     try {
       await onRenew(clientId, paymentMethod);
+      setRenewPanel(null);
+    } catch (e) {
+      console.error('[handleRenewConfirm]', e);
+      setRenewError('No se pudo renovar. Intenta de nuevo.');
     } finally {
       setLoadingId(null);
-      setRenewPanel(null);
     }
   };
 
@@ -198,7 +204,8 @@ export function ClientList({
                       </label>
                       <select
                         id={`payment-method-${c.id}`}
-                        className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={loadingId === c.id}
                         defaultValue={renewPanel.habitualMethod}
                         onChange={(e) => handleRenewConfirm(e.target.value)}
                       >
@@ -230,6 +237,9 @@ export function ClientList({
                         <span>Cancelar</span>
                       </Button>
                     </div>
+                    {renewError && (
+                      <p className="text-xs text-red-600 text-center">{renewError}</p>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">

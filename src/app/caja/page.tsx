@@ -5,11 +5,11 @@ import { CashSummary } from '@/components/CashSummary';
 import { CashClosingForm } from '@/components/CashClosingForm';
 import { CashHistory } from '@/components/CashHistory';
 import { parseBogotaDateKey, toBogotaDayKey } from '@/lib/dates';
-import { formatDate, formatTime } from '@/lib/utils';
 import { cashDateSchema } from '@/lib/validation';
+import { clientNameFrom } from '@/lib/cash';
 import { Wallet } from 'lucide-react';
 import Link from 'next/link';
-import { MembershipPayment } from '@/types';
+import { CashClosing, MembershipPayment } from '@/types';
 
 export const revalidate = 0;
 
@@ -61,31 +61,57 @@ export default async function CashPage({
     throw new Error('No se pudieron cargar los pagos del día.');
   }
 
-  // Transformar para que coincida con MembershipPayment (el cliente viene como array)
-  const typedPayments = (payments || []).map((p) => ({
-    ...p,
-    clients: p.clients[0]?.name || 'Cliente desconocido',
-  })) as (MembershipPayment & { clients: string })[];
+  // Transformar de forma explícita: PostgREST puede devolver `clients` como objeto o array.
+  // `clients` queda como string ya resuelto para la UI.
+  const typedPayments: (MembershipPayment & { clients: string })[] = (payments ?? []).map((p) => ({
+    id: p.id,
+    client_id: p.client_id,
+    amount_cop: p.amount_cop,
+    paid_at: p.paid_at,
+    period_start: p.period_start,
+    period_end: p.period_end,
+    recorded_by: p.recorded_by,
+    note: p.note,
+    created_at: p.created_at,
+    voided_at: p.voided_at,
+    voided_by: p.voided_by,
+    void_reason: p.void_reason,
+    payment_method: p.payment_method,
+    clients: clientNameFrom(p.clients),
+  }));
 
-  // Últimos 10 cierres de ese día o los 10 más recientes globales
-  const { data: closings, error: closingsError } = await supabase
+  // Cierres de la fecha mostrada (todos, el primero es el vigente del día)
+  const { data: dayClosingsRaw, error: dayClosingsError } = await supabase
+    .from('cash_closings')
+    .select('*')
+    .eq('business_date', businessDate)
+    .order('created_at', { ascending: false });
+
+  if (dayClosingsError) {
+    console.error('[CashPage:dayClosings]', dayClosingsError.message);
+    throw new Error('No se pudo cargar el historial de cierres del día.');
+  }
+
+  // Los 10 cierres más recientes globales (historial general)
+  const { data: recentClosingsRaw, error: recentClosingsError } = await supabase
     .from('cash_closings')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(10);
 
-  if (closingsError) {
-    console.error('[CashPage:closings]', closingsError.message);
+  if (recentClosingsError) {
+    console.error('[CashPage:recentClosings]', recentClosingsError.message);
     throw new Error('No se pudo cargar el historial de cierres.');
   }
 
-  // Filtrar cierres del día seleccionado y el vigente (el último por created_at)
-  const dayClosings = (closings || []).filter((c) => c.business_date === businessDate);
-  const latestClosing = (closings || [])[0] || null;
-  const isLatestForDay = latestClosing && latestClosing.business_date === businessDate;
+  const dayClosings: CashClosing[] = dayClosingsRaw ?? [];
+  const recentClosings: CashClosing[] = recentClosingsRaw ?? [];
 
-  // Calcular expected actual para comparar con el cierre vigente
-  const cashPayments = (typedPayments || []).filter((p) => p.payment_method === 'EFECTIVO');
+  // El cierre vigente del día es el primero de los cierres de esa fecha (o null).
+  const latestClosing: CashClosing | null = dayClosings[0] ?? null;
+
+  // Calcular expected actual para comparar con el cierre vigente del día
+  const cashPayments = typedPayments.filter((p) => p.payment_method === 'EFECTIVO');
   const currentExpected = cashPayments.reduce((sum, p) => sum + p.amount_cop, 0);
 
   return (
@@ -131,13 +157,13 @@ export default async function CashPage({
           businessDate={businessDate}
           expectedCashCop={currentExpected}
           latestClosing={latestClosing}
-          isLatestForDay={isLatestForDay}
+          currentExpected={currentExpected}
         />
 
         {/* Historial de cierres */}
         <CashHistory
-          closings={closings || []}
           dayClosings={dayClosings}
+          recentClosings={recentClosings}
           businessDate={businessDate}
           currentExpected={currentExpected}
         />
