@@ -4,9 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { requireOwner } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { FIXED_FEE_COP, formatCOP, getMembershipExpiration, computeNextPeriod } from '@/lib/utils';
-import { uuidSchema, voidPaymentFormSchema } from '@/lib/validation';
+import {
+  type ActionState,
+  uuidSchema,
+  voidPaymentFormSchema,
+} from '@/lib/validation';
 import { logAudit } from '@/lib/audit';
-import { type ActionState } from '@/lib/validation';
 
 export async function voidPaymentAction(
   clientId: string,
@@ -28,7 +31,13 @@ export async function voidPaymentAction(
   });
 
   if (!parsed.success) {
-    return { ok: false, fieldErrors: { reason: ['Motivo de la anulación inválido'] } };
+    const firstMessage = parsed.error.issues[0]?.message;
+    return {
+      ok: false,
+      fieldErrors: {
+        reason: [firstMessage ?? 'Motivo de la anulación inválido'],
+      },
+    };
   }
 
   const supabase = createSupabaseAdminClient();
@@ -45,7 +54,7 @@ export async function voidPaymentAction(
     .eq('client_id', clientId)
     .is('voided_at', null)
     .select('id, amount_cop, paid_at')
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('[voidPaymentAction]', error.message);

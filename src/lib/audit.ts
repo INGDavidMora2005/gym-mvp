@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { AuditAction, Owner } from '@/types';
@@ -20,15 +20,13 @@ export async function logAudit(params: {
   const supabase = createSupabaseAdminClient();
 
   // No incluimos teléfono ni dirección en details por seguridad
-  const safeDetails = JSON.stringify(params.details || {});
-
   const { error } = await supabase.from('audit_log').insert({
     owner_id: params.owner.id,
     owner_name: params.owner.name,
     action: params.action,
     entity: params.entity,
     entity_id: params.entityId,
-    details: safeDetails,
+    details: params.details ?? {},
   });
 
   if (error) {

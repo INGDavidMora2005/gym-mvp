@@ -28,7 +28,7 @@ export async function deleteAttendanceAction(
     .eq('id', attendanceId)
     .eq('client_id', clientId)
     .select('id, check_in')
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('[deleteAttendanceAction]', error.message);

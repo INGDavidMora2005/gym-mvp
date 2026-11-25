@@ -188,13 +188,18 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                     <div
                       key={p.id}
                       className={`p-2.5 rounded-lg text-xs flex justify-between items-center ${
-                        isVoided ? 'bg-rose-50 line-through' : 'bg-ink-100'
+                        isVoided ? 'bg-rose-50' : 'bg-ink-100'
                       }`}
                     >
                       <div className="flex-1">
                         <p className="font-semibold text-ink-800">
                           {isVoided ? (
-                            <span className="text-red-600">{formatCOP(p.amount_cop)} (Anulado)</span>
+                            <>
+                              <span className="text-red-600 line-through">
+                                {formatCOP(p.amount_cop)}
+                              </span>{' '}
+                              <span className="text-red-600">(Anulado)</span>
+                            </>
                           ) : (
                             formatCOP(p.amount_cop)
                           )}

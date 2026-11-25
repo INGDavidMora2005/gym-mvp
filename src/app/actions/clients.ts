@@ -165,7 +165,7 @@ export async function softDeleteClientAction(clientId: string) {
     .eq('id', clientId)
     .eq('active', true)
     .select('id, name')
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('[softDeleteClientAction]', error.message);
