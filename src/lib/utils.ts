@@ -43,7 +43,8 @@ export function calculateMembershipStatus(
 }
 
 /**
- * Debe coincidir con getMembershipExpiration() en sql/schema.sql: si cambia la regla, cámbiala en ambos sitios.
+ * Debe coincidir con client_overview.expiration en sql/migrations/005_vista_resumen_clientes.sql y sql/schema.sql:
+ * si cambia la regla, cámbiala en ambos sitios.
  * Devuelve el vencimiento de membresía más lejano entre los pagos:
  * el máximo de (period_end ?? paid_at + 30 días). Null si no hay pagos.
  */

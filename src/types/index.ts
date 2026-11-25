@@ -34,9 +34,22 @@ export interface MembershipPayment {
   voided_at: string | null;
   voided_by: string | null;
   void_reason: string | null;
+  payment_method: PaymentMethod | null;
 }
 
-export type AuditAction = 'PAYMENT_VOIDED' | 'ATTENDANCE_DELETED' | 'CLIENT_DELETED';
+export type AuditAction = 'PAYMENT_VOIDED' | 'ATTENDANCE_DELETED' | 'CLIENT_DELETED' | 'CASH_CLOSED';
+
+export interface CashClosing {
+  id: string;
+  business_date: string;
+  expected_cash_cop: number;
+  counted_cash_cop: number;
+  difference_cop: number;
+  note: string | null;
+  closed_by: string;
+  closed_by_id: string | null;
+  created_at: string;
+}
 
 export interface Attendance {
   id: string;

@@ -51,9 +51,64 @@ const addressSchema = z.preprocess(
     .nullable()
 );
 
-const paymentMethodSchema = z.enum(PAYMENT_METHODS, {
+export const paymentMethodSchema = z.enum(PAYMENT_METHODS, {
   error: 'Selecciona un método de pago válido',
 });
+
+export const cashDateSchema = z
+  .string({ error: 'La fecha es obligatoria' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Formato de fecha inválido (YYYY-MM-DD)' })
+  .refine((dateStr) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!match) return false;
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    // Validar que la fecha sea real (no 2026-02-30, etc.)
+    const date = new Date(Date.UTC(year, month, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+      return false;
+    }
+    // Validar que no sea futura según Bogotá
+    const now = new Date();
+    const bogotaOffsetMs = -5 * 60 * 60 * 1000; // UTC-5
+    const bogotaNow = new Date(now.getTime() + bogotaOffsetMs);
+    // bogotaToday en UTC (00:00 Bogotá de hoy = 05:00 UTC de hoy)
+    const bogotaToday = new Date(Date.UTC(bogotaNow.getUTCFullYear(), bogotaNow.getUTCMonth(), bogotaNow.getUTCDate()));
+    // inputDate en UTC (00:00 Bogotá del día input = 05:00 UTC de ese día)
+    const inputDate = new Date(Date.UTC(year, month, day));
+    return inputDate <= bogotaToday;
+  }, { error: 'La fecha no puede ser futura o es inválida' });
+
+export const countedCashSchema = z
+  .string({ error: 'El efectivo contado es obligatorio' })
+  .refine((value) => {
+    const trimmed = value.trim();
+    // Rechazar decimales: punto o coma seguido de 1-2 dígitos al final
+    // (ej: "150.00", "150,50", "150.5", "150,5")
+    if (/[.,]\d{1,2}$/.test(trimmed)) return false;
+    // Quitar separadores de miles (puntos, comas, espacios)
+    const cleaned = trimmed.replace(/[.,\s]/g, '');
+    // Debe ser solo dígitos
+    return /^\d+$/.test(cleaned);
+  }, { error: 'Solo se permiten dígitos enteros (sin decimales, letras ni signos)' })
+  .refine((value) => {
+    const trimmed = value.trim();
+    const cleaned = trimmed.replace(/[.,\s]/g, '');
+    return cleaned.length <= 9;
+  }, { error: 'Máximo 9 dígitos' })
+  .transform((value) => {
+    const trimmed = value.trim();
+    const cleaned = trimmed.replace(/[.,\s]/g, '');
+    return parseInt(cleaned, 10);
+  });
+
+export const noteSchema = z
+  .string()
+  .trim()
+  .max(200, { error: 'La nota no puede superar los 200 caracteres' })
+  .optional()
+  .nullable();
 
 export const clientSchema = z.object({
   name: nameSchema,

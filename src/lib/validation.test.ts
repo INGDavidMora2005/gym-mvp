@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { clientSchema, createClientSchema, uuidSchema, voidReasonSchema } from './validation';
+import {
+  clientSchema,
+  createClientSchema,
+  uuidSchema,
+  voidReasonSchema,
+  paymentMethodSchema,
+  cashDateSchema,
+  countedCashSchema,
+  noteSchema,
+  PAYMENT_METHODS,
+} from './validation';
+import { parseBogotaDateKey } from './dates';
 
 const validClient = {
   name: 'Ana Gómez',
@@ -203,5 +214,168 @@ describe('motivo de anulación (voidReasonSchema)', () => {
     if (result.success) {
       expect(result.data).toBe(maxReason);
     }
+  });
+});
+
+describe('paymentMethodSchema (exportado)', () => {
+  it.each(PAYMENT_METHODS)('acepta %s', (method) => {
+    const result = paymentMethodSchema.safeParse(method);
+    expect(result.success).toBe(true);
+  });
+
+  it('rechaza método desconocido', () => {
+    const result = paymentMethodSchema.safeParse('TARJETA');
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('cashDateSchema', () => {
+  // Fechas fijas para evitar dependencia de la zona horaria del proceso
+  // Usamos fechas que sabemos que son válidas
+  const todayBogota = '2026-11-24';
+  const yesterdayBogota = '2026-11-23';
+  const tomorrowBogota = '2026-11-25';
+
+  it('acepta fecha de hoy (YYYY-MM-DD)', () => {
+    const result = cashDateSchema.safeParse(todayBogota);
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta fecha pasada', () => {
+    const result = cashDateSchema.safeParse(yesterdayBogota);
+    expect(result.success).toBe(true);
+  });
+
+  it('rechaza fecha futura', () => {
+    const result = cashDateSchema.safeParse(tomorrowBogota);
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza formato inválido', () => {
+    const result = cashDateSchema.safeParse('24/11/2026');
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza fecha inexistente', () => {
+    const result = cashDateSchema.safeParse('2026-02-30');
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('countedCashSchema', () => {
+  it('acepta número simple "150000"', () => {
+    const result = countedCashSchema.safeParse('150000');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe(150000);
+  });
+
+  it('acepta con puntos "150.000"', () => {
+    const result = countedCashSchema.safeParse('150.000');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe(150000);
+  });
+
+  it('acepta con comas "150,000"', () => {
+    const result = countedCashSchema.safeParse('150,000');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe(150000);
+  });
+
+  it('acepta con espacios " 150 000 " ', () => {
+    const result = countedCashSchema.safeParse(' 150 000 ');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe(150000);
+  });
+
+  it('rechaza negativo', () => {
+    const result = countedCashSchema.safeParse('-1000');
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza decimales', () => {
+    const result = countedCashSchema.safeParse('150000.50');
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza letras', () => {
+    const result = countedCashSchema.safeParse('abc');
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza más de 9 dígitos', () => {
+    const result = countedCashSchema.safeParse('1000000000');
+    expect(result.success).toBe(false);
+  });
+
+  it('acepta 0', () => {
+    const result = countedCashSchema.safeParse('0');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe(0);
+  });
+});
+
+describe('noteSchema', () => {
+  it('acepta undefined', () => {
+    const result = noteSchema.safeParse(undefined);
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta null', () => {
+    const result = noteSchema.safeParse(null);
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta string vacío', () => {
+    const result = noteSchema.safeParse('');
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta string con espacios (se trimea)', () => {
+    const result = noteSchema.safeParse('  nota  ');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe('nota');
+  });
+
+  it('rechaza más de 200 caracteres', () => {
+    const result = noteSchema.safeParse('a'.repeat(201));
+    expect(result.success).toBe(false);
+  });
+
+  it('acepta exactamente 200 caracteres', () => {
+    const result = noteSchema.safeParse('a'.repeat(200));
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('parseBogotaDateKey', () => {
+  it('parsea YYYY-MM-DD a 00:00 Bogotá (05:00 UTC)', () => {
+    const date = parseBogotaDateKey('2026-11-24');
+    expect(date.getUTCFullYear()).toBe(2026);
+    expect(date.getUTCMonth()).toBe(10); // 0-indexed
+    expect(date.getUTCDate()).toBe(24);
+    expect(date.getUTCHours()).toBe(5); // 00:00 Bogotá = 05:00 UTC
+    expect(date.getUTCMinutes()).toBe(0);
+  });
+
+  it('lanza en formato inválido', () => {
+    expect(() => parseBogotaDateKey('24/11/2026')).toThrow('Formato de fecha inválido');
+  });
+
+  it('lanza en fecha inexistente', () => {
+    expect(() => parseBogotaDateKey('2026-02-30')).toThrow('Fecha inválida');
+  });
+
+  it('maneja fin de año', () => {
+    const date = parseBogotaDateKey('2026-12-31');
+    expect(date.getUTCFullYear()).toBe(2026);
+    expect(date.getUTCMonth()).toBe(11);
+    expect(date.getUTCDate()).toBe(31);
+  });
+
+  it('maneja año bisiesto', () => {
+    const date = parseBogotaDateKey('2024-02-29');
+    expect(date.getUTCFullYear()).toBe(2024);
+    expect(date.getUTCMonth()).toBe(1);
+    expect(date.getUTCDate()).toBe(29);
   });
 });

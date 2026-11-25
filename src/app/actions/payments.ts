@@ -8,6 +8,7 @@ import {
   type ActionState,
   uuidSchema,
   voidPaymentFormSchema,
+  paymentMethodSchema,
 } from '@/lib/validation';
 import { logAudit } from '@/lib/audit';
 
@@ -88,10 +89,16 @@ export async function voidPaymentAction(
   return { ok: true };
 }
 
-export async function renewClientAction(clientId: string) {
+export async function renewClientAction(clientId: string, paymentMethod: string) {
   const owner = await requireOwner();
 
   if (!uuidSchema.safeParse(clientId).success) {
+    throw new Error('No se pudo renovar la suscripción. Intenta de nuevo.');
+  }
+
+  // Validar método de pago
+  const methodResult = paymentMethodSchema.safeParse(paymentMethod);
+  if (!methodResult.success) {
     throw new Error('No se pudo renovar la suscripción. Intenta de nuevo.');
   }
 
@@ -99,7 +106,7 @@ export async function renewClientAction(clientId: string) {
 
   const { data: client, error: clientError } = await supabase
     .from('clients')
-    .select('id')
+    .select('id, payment_method')
     .eq('id', clientId)
     .eq('active', true)
     .maybeSingle();
@@ -153,6 +160,7 @@ export async function renewClientAction(clientId: string) {
     period_start: period_start.toISOString(),
     period_end: period_end.toISOString(),
     recorded_by: owner.name,
+    payment_method: methodResult.data,
     note: `Renovación de tarifa fija ${formatCOP(FIXED_FEE_COP)}`,
   });
 
@@ -164,4 +172,5 @@ export async function renewClientAction(clientId: string) {
   revalidatePath('/dashboard');
   revalidatePath('/expirations');
   revalidatePath(`/clients/${clientId}`);
+  revalidatePath('/caja');
 }

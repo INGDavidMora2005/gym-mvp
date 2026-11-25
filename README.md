@@ -185,6 +185,7 @@ duplicados antes de aplicarlo.
   - `sql/migrations/003_asistencia_unica_por_dia.sql`: evita asistencias duplicadas por cliente y día de Bogotá.
   - `sql/migrations/004_anulaciones_y_auditoria.sql`: agrega soporte para anular pagos y auditoría de acciones críticas.
   - `sql/migrations/005_vista_resumen_clientes.sql`: crea la vista `public.client_overview` para la consulta optimizada de vencimientos y asistencias sin descargar todo el historial.
+  - `sql/migrations/006_metodo_pago_y_cierres.sql`: añade método de pago a cada pago, tabla `cash_closings` para cierres de caja diarios y acción `CASH_CLOSED` en auditoría.
 
 ---
 
@@ -247,6 +248,44 @@ Para instalar las columnas y tabla de auditoría, ejecuta la migración:
 ```
 
 O, para instalaciones nuevas, el `sql/schema.sql` ya incluye todas las estructuras necesarias.
+
+---
+
+## 💰 Caja y Cierres
+
+La página **Caja** (`/caja`) permite ver el resumen diario de pagos agrupados por método y registrar cierres de efectivo.
+
+### Método de pago por pago
+- Cada renovación y pago inicial guarda el `payment_method` seleccionado (`EFECTIVO`, `NEQUI`, `DAVPLATA`, `PSE`, `OTRO`).
+- Los pagos históricos (anteriores a la migración 006) quedan con `payment_method = NULL` y se muestran como "Sin método".
+- En la lista de clientes y en el detalle, al renovar se muestra un selector inline con el método habitual del cliente preseleccionado.
+
+### Resumen diario (`/caja`)
+- Seleccionando una fecha (por defecto hoy en Bogotá), se muestran:
+  - Total del día y cantidad de pagos.
+  - **Efectivo esperado**: calculado **en el servidor** sumando `amount_cop` de pagos no anulados con `payment_method = 'EFECTIVO'` y `paid_at` en el día de Bogotá. **Nunca se confía en un valor enviado por el navegador.**
+  - Desglose por método (incluye "Sin método" para pagos con `payment_method = NULL`).
+  - Lista de pagos con hora, cliente, método y quién lo registró.
+
+### Cierre de efectivo
+- Formulario con:
+  - **Efectivo esperado** (solo lectura, calculado en servidor).
+  - **Efectivo contado** (input numérico, acepta `150000`, `150.000`, `150,000`).
+  - Nota opcional (máx 200 caracteres).
+- Al guardar, se inserta en `cash_closings` con `difference_cop = counted - expected`.
+- Se registra auditoría `CASH_CLOSED` con todos los detalles.
+- Se muestra la diferencia con código de color: verde (0), ámbar (sobrante), rojo (faltante).
+
+### Historial de cierres
+- Muestra los últimos 10 cierres del día seleccionado (o los 10 más recientes globales).
+- Marca el **vigente** (el último por `created_at`).
+- Si el cierre vigente tiene `expected_cash_cop` distinto del esperado actual (por una anulación posterior), muestra un aviso: **"El esperado cambió desde el cierre"**.
+
+### Migración 006
+Ejecuta `sql/migrations/006_metodo_pago_y_cierres.sql` para:
+1. Añadir `payment_method` a `membership_payments` (nullable, sin backfill).
+2. Crear tabla `cash_closings` (repetible por `business_date`, sin unique).
+3. Añadir `CASH_CLOSED` a la constraint de `audit_log.action`.
 
 ---
 

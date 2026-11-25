@@ -78,7 +78,6 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
     // Clientes ACTIVO o POR_VENCER sin asistir >= 14 días (Bogotá).
     if (c.status === 'ACTIVO' || c.status === 'POR_VENCER') {
-      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
       const hasRecentAttendance =
         c.last_attendance &&
         diffBogotaDays(new Date(c.last_attendance), now) < 14;

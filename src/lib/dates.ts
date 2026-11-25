@@ -61,3 +61,22 @@ export function bogotaMonthKey(date: Date): string {
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
   return `${y}-${m}`;
 }
+
+/**
+ * Parsea 'YYYY-MM-DD' como 00:00 de Bogotá y devuelve el instante UTC.
+ * Lanza si el string no es una fecha válida.
+ */
+export function parseBogotaDateKey(dateStr: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) {
+    throw new Error('Formato de fecha inválido (YYYY-MM-DD)');
+  }
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10) - 1;
+  const day = parseInt(match[3], 10);
+  const date = new Date(Date.UTC(year, month, day, 5, 0, 0)); // 00:00 Bogotá = 05:00 UTC
+  if (isNaN(date.getTime()) || date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+    throw new Error('Fecha inválida');
+  }
+  return date;
+}

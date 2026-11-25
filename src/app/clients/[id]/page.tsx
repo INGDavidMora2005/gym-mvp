@@ -6,11 +6,12 @@ import { Navigation } from '@/components/Navigation';
 import { Card, Button, StatusBadge } from '@/components/UIComponents';
 import { ClientForm } from '@/components/ClientForm';
 import { VoidPaymentForm } from '@/components/VoidPaymentForm';
-import { renewClientAction } from '@/app/actions/payments';
+import { RenewButton } from '@/components/RenewButton';
 import { deleteAttendanceAction } from '@/app/actions/attendance';
 import { softDeleteClientAction, updateClientAction } from '@/app/actions/clients';
-import { ArrowLeft, RefreshCw, MessageCircle, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trash2, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { PaymentMethod } from '@/types';
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const owner = await requireOwner();
@@ -82,6 +83,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     generateExpirationMessage(client.name, days_left, next_expiration)
   );
 
+  const habitualMethod = client.payment_method as PaymentMethod;
+
   return (
     <div className="min-h-screen flex flex-col pb-12">
       <Navigation ownerName={owner.name} />
@@ -106,12 +109,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
-              <form action={renewClientAction.bind(null, id)} className="flex-1 sm:flex-initial">
-                <Button variant="primary" type="submit" className="w-full">
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Renovar {formatCOP(FIXED_FEE_COP)}</span>
-                </Button>
-              </form>
+              <RenewButton 
+                clientId={id} 
+                habitualMethod={habitualMethod}
+                fee={FIXED_FEE_COP}
+              />
 
               <a
                 href={waUrl}

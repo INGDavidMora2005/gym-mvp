@@ -8,6 +8,7 @@ import {
   LogOut,
   UserPlus,
   Dumbbell,
+  Wallet,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
             <NavigationItem href="/attendance" icon={CalendarCheck} label="Asistencia" isActive={false} />
             <NavigationItem href="/expirations" icon={AlertTriangle} label="Vencimientos" isActive={false} />
             <NavigationItem href="/reports" icon={BarChart3} label="Ingresos" isActive={false} />
+            <NavigationItem href="/caja" icon={Wallet} label="Caja" isActive={false} />
           </nav>
 
           {/* Acciones y Perfil */}
@@ -74,10 +76,11 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
       {/* Navegación Móvil Inferior */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ink-200 shadow-lg px-2 py-2">
         <div className="flex justify-around items-center">
-          <NavigationItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={false} />
-          <NavigationItem href="/attendance" icon={CalendarCheck} label="Asistencia" isActive={false} />
-          <NavigationItem href="/expirations" icon={AlertTriangle} label="Vencimientos" isActive={false} />
-          <NavigationItem href="/reports" icon={BarChart3} label="Ingresos" isActive={false} />
+          <NavigationItem href="/dashboard" icon={LayoutDashboard} label="Ini" isActive={false} />
+          <NavigationItem href="/attendance" icon={CalendarCheck} label="Asis" isActive={false} />
+          <NavigationItem href="/expirations" icon={AlertTriangle} label="Venc" isActive={false} />
+          <NavigationItem href="/reports" icon={BarChart3} label="Ingr" isActive={false} />
+          <NavigationItem href="/caja" icon={Wallet} label="Caja" isActive={false} />
         </div>
       </div>
     </header>

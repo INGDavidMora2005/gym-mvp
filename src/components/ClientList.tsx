@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, RefreshCw, MessageCircle, Phone, UserCheck, Calendar } from 'lucide-react';
-import { ClientWithStatus } from '@/types';
+import { Search, RefreshCw, MessageCircle, Phone, UserCheck, Calendar, X } from 'lucide-react';
+import { ClientWithStatus, PaymentMethod } from '@/types';
 import { StatusBadge, Button } from './UIComponents';
 import {
   formatDate,
@@ -14,6 +14,8 @@ import {
 } from '@/lib/utils';
 import Link from 'next/link';
 import { Pagination } from './Pagination';
+
+const PAYMENT_METHODS: PaymentMethod[] = ['EFECTIVO', 'NEQUI', 'DAVPLATA', 'PSE', 'OTRO'];
 
 export function ClientList({
   clients,
@@ -31,19 +33,30 @@ export function ClientList({
   pageCount: number;
   currentQ?: string;
   currentStatus?: string;
-  onRenew: (clientId: string) => Promise<void>;
+  onRenew: (clientId: string, paymentMethod: string) => Promise<void>;
   onRecordAttendance: (clientId: string) => Promise<void>;
 }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [renewPanel, setRenewPanel] = useState<{ clientId: string; habitualMethod: PaymentMethod } | null>(null);
 
-  const handleRenewClick = async (clientId: string) => {
-    if (!confirm(`¿Confirmar renovación por ${formatCOP(FIXED_FEE_COP)} para este cliente?`)) return;
+  const handleRenewClick = (clientId: string, habitualMethod: PaymentMethod) => {
+    setRenewPanel({ clientId, habitualMethod });
+  };
+
+  const handleRenewConfirm = async (paymentMethod: string) => {
+    if (!renewPanel) return;
+    const { clientId } = renewPanel;
     setLoadingId(clientId);
     try {
-      await onRenew(clientId);
+      await onRenew(clientId, paymentMethod);
     } finally {
       setLoadingId(null);
+      setRenewPanel(null);
     }
+  };
+
+  const handleRenewCancel = () => {
+    setRenewPanel(null);
   };
 
   const handleAttendanceClick = async (clientId: string) => {
@@ -176,39 +189,84 @@ export function ClientList({
               </div>
 
               {/* Botones de Acción */}
-              <div className="pt-3 border-t border-ink-100 grid grid-cols-3 gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={loadingId === c.id}
-                  onClick={() => handleRenewClick(c.id)}
-                  title={`Renovar suscripción de ${formatCOP(FIXED_FEE_COP)}`}
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Renovar</span>
-                </Button>
+              <div className="pt-3 border-t border-ink-100">
+                {renewPanel && renewPanel.clientId === c.id ? (
+                  <div className="space-y-2 p-3 bg-brand-50 rounded-xl border border-brand-200 animate-slide-down">
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`payment-method-${c.id}`} className="text-xs font-medium text-ink-700 w-24 shrink-0">
+                        Método
+                      </label>
+                      <select
+                        id={`payment-method-${c.id}`}
+                        className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        defaultValue={renewPanel.habitualMethod}
+                        onChange={(e) => handleRenewConfirm(e.target.value)}
+                      >
+                        {PAYMENT_METHODS.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="flex-1"
+                        disabled={loadingId === c.id}
+                        onClick={() => handleRenewConfirm(renewPanel.habitualMethod)}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Confirmar {formatCOP(FIXED_FEE_COP)}</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRenewCancel}
+                        disabled={loadingId === c.id}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Cancelar</span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={loadingId === c.id}
+                      onClick={() => handleRenewClick(c.id, c.payment_method)}
+                      title={`Renovar suscripción de ${formatCOP(FIXED_FEE_COP)}`}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Renovar</span>
+                    </Button>
 
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={loadingId === c.id}
-                  onClick={() => handleAttendanceClick(c.id)}
-                  title="Marcar ingreso del día"
-                >
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Entró</span>
-                </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={loadingId === c.id}
+                      onClick={() => handleAttendanceClick(c.id)}
+                      title="Marcar ingreso del día"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Entró</span>
+                    </Button>
 
-                <a
-                  href={waUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1 text-xs font-medium px-2 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all"
-                  title="Enviar aviso por WhatsApp"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Aviso</span>
-                </a>
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1 text-xs font-medium px-2 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all"
+                      title="Enviar aviso por WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Aviso</span>
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           );

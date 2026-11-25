@@ -69,6 +69,7 @@ export async function createClientAction(
         period_start: now.toISOString(),
         period_end: period_end.toISOString(),
         recorded_by: owner.name,
+        payment_method: clientData.payment_method,
         note: 'Pago inicial al registrar',
       });
 

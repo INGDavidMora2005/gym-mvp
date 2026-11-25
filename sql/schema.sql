@@ -67,8 +67,28 @@ create table if not exists public.membership_payments (
   created_at timestamptz not null default now(),
   voided_at timestamptz,
   voided_by text,
-  void_reason text
+  void_reason text,
+  payment_method text
 );
+
+-- Constraint idempotente para payment_method
+do $$
+declare
+  constraint_exists boolean;
+begin
+  select exists (
+    select 1
+    from pg_constraint
+    where conname = 'payments_method_check'
+      and conrelid = 'public.membership_payments'::regclass
+  ) into constraint_exists;
+
+  if not constraint_exists then
+    alter table public.membership_payments
+      add constraint payments_method_check
+      check (payment_method is null or payment_method in ('EFECTIVO','PSE','NEQUI','DAVPLATA','OTRO'));
+  end if;
+end $$;
 
 create index if not exists idx_payments_client_paid_at
   on public.membership_payments (client_id, paid_at desc);
@@ -83,6 +103,29 @@ alter table public.membership_payments
   add constraint payments_void_consistency
   check (voided_at is null or void_reason is not null);
 
+-- 3c. Tabla de cierres de caja (cash_closings)
+create table if not exists public.cash_closings (
+  id uuid primary key default gen_random_uuid(),
+  business_date date not null,
+  expected_cash_cop integer not null check (expected_cash_cop >= 0),
+  counted_cash_cop integer not null check (counted_cash_cop >= 0),
+  difference_cop integer not null,
+  note text,
+  closed_by text not null,
+  closed_by_id uuid references public.owners (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- Índice para consultas por fecha de negocio (desc) y created_at (desc)
+create index if not exists idx_cash_closings_business_date_created_at
+  on public.cash_closings (business_date desc, created_at desc);
+
+-- Habilitar RLS en cash_closings (sin políticas = deny-all)
+alter table public.cash_closings enable row level security;
+
+revoke all on table public.cash_closings from anon;
+revoke all on table public.cash_closings from authenticated;
+
 -- 3b. Tabla de auditoría
 create table if not exists public.audit_log (
   id uuid primary key default gen_random_uuid(),
@@ -90,7 +133,7 @@ create table if not exists public.audit_log (
   owner_id uuid references public.owners (id),
   owner_name text not null,
   action text not null check (
-    action in ('PAYMENT_VOIDED', 'ATTENDANCE_DELETED', 'CLIENT_DELETED')
+    action in ('PAYMENT_VOIDED', 'ATTENDANCE_DELETED', 'CLIENT_DELETED', 'CASH_CLOSED')
   ),
   entity text not null,
   entity_id uuid,
