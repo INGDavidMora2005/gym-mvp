@@ -33,10 +33,11 @@ export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
     throw new Error('No se pudieron cargar los clientes.');
   }
 
-  // Pagos con paid_at y period_end para calcular el vencimiento real.
+  // Pagos con paid_at y period_end para calcular el vencimiento real (excluyendo anulados).
   const { data: payments, error: errPayments } = await supabase
     .from('membership_payments')
     .select('client_id, paid_at, period_end')
+    .is('voided_at', null)
     .order('paid_at', { ascending: false });
 
   if (errPayments) {
@@ -150,6 +151,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const { data: thisMonthPays, error: errThisMonthPays } = await supabase
     .from('membership_payments')
     .select('amount_cop')
+    .is('voided_at', null)
     .gte('paid_at', thisMonthStart.toISOString())
     .lt('paid_at', thisMonthEnd.toISOString());
 
@@ -161,6 +163,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const { data: lastMonthPays, error: errLastMonthPays } = await supabase
     .from('membership_payments')
     .select('amount_cop')
+    .is('voided_at', null)
     .gte('paid_at', lastMonthStart.toISOString())
     .lt('paid_at', lastMonthEnd.toISOString());
 
@@ -171,6 +174,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
   const revenueThisMonth = (thisMonthPays || []).reduce((acc, p) => acc + p.amount_cop, 0);
   const revenueLastMonth = (lastMonthPays || []).reduce((acc, p) => acc + p.amount_cop, 0);
+  const paymentsThisMonth = (thisMonthPays || []).length;
 
   // Asistencia del mes actual (Bogotá) para tasa de asistencia.
   const { count: attendanceThisMonth, error: errAttendanceCount } = await supabase
@@ -199,6 +203,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     no_payment_clients: noPaymentCount,
     revenue_this_month: revenueThisMonth,
     revenue_last_month: revenueLastMonth,
+    payments_this_month: paymentsThisMonth,
     attendance_this_month: attendanceThisMonth || 0,
     attendance_rate: { attended: attendedEligible, total: totalEligible },
     not_returned: notReturned,
@@ -212,6 +217,7 @@ export async function fetchMonthlyRevenue(monthsCount: number = 6): Promise<Reve
   const { data: payments, error } = await supabase
     .from('membership_payments')
     .select('paid_at, amount_cop')
+    .is('voided_at', null)
     .order('paid_at', { ascending: true });
 
   if (error) {

@@ -2,7 +2,7 @@ import { requireOwner } from '@/lib/auth';
 import { fetchClientsWithStatus } from '@/lib/db';
 import { Navigation } from '@/components/Navigation';
 import { Card, Button } from '@/components/UIComponents';
-import { recordAttendanceAction } from '@/app/actions/attendance';
+import { recordAttendanceAction, deleteAttendanceAction } from '@/app/actions/attendance';
 import { CalendarCheck, CheckCircle } from 'lucide-react';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { startOfBogotaDay } from '@/lib/dates';
@@ -21,7 +21,7 @@ export default async function AttendancePage() {
 
   const { data: todayAttendances, error: todayAttendancesError } = await supabase
     .from('attendance')
-    .select('client_id, check_in')
+    .select('id, client_id, check_in')
     .gte('check_in', todayStart.toISOString())
     .order('check_in', { ascending: false });
 
@@ -30,7 +30,12 @@ export default async function AttendancePage() {
     throw new Error('No se pudieron cargar las asistencias.');
   }
 
-  const attendedMap = new Set((todayAttendances || []).map((a) => a.client_id));
+  // Mapa: client_id -> {id, check_in} para poder mostrar botón deshacer
+  const attendedMap = new Map<string, { id: string; check_in: string }>();
+  for (const a of todayAttendances || []) {
+    attendedMap.set(a.client_id, a);
+  }
+  const attendedClientIds = new Set(attendedMap.keys());
 
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">
@@ -74,10 +79,17 @@ export default async function AttendancePage() {
                 </div>
 
                 {hasAttendedToday ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-semibold">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Ya entró hoy</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-semibold">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span>Ya entró hoy</span>
+                    </span>
+                    <form action={deleteAttendanceAction.bind(null, c.id, attendedMap.get(c.id)!.id)}>
+                      <Button variant="secondary" size="sm" type="submit">
+                        Deshacer
+                      </Button>
+                    </form>
+                  </div>
                 ) : (
                   <form action={recordAttendanceAction.bind(null, c.id)}>
                     <Button variant="primary" size="sm" type="submit">

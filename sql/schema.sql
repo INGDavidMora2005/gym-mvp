@@ -64,11 +64,41 @@ create table if not exists public.membership_payments (
   period_end timestamptz,
   recorded_by text,
   note text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  voided_at timestamptz,
+  voided_by text,
+  void_reason text
 );
 
 create index if not exists idx_payments_client_paid_at
   on public.membership_payments (client_id, paid_at desc);
+
+-- Índice parcial para pagos activos (no anulados)
+create index if not exists idx_payments_client_active
+  on public.membership_payments (client_id, paid_at desc)
+  where voided_at is null;
+
+-- Constraint de consistencia: si voided_at tiene valor, void_reason debe tener valor
+alter table public.membership_payments
+  add constraint payments_void_consistency
+  check (voided_at is null or void_reason is not null);
+
+-- 3b. Tabla de auditoría
+create table if not exists public.audit_log (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  owner_id uuid references public.owners (id),
+  owner_name text not null,
+  action text not null check (
+    action in ('PAYMENT_VOIDED', 'ATTENDANCE_DELETED', 'CLIENT_DELETED')
+  ),
+  entity text not null,
+  entity_id uuid,
+  details jsonb not null default '{}'::jsonb
+);
+
+create index if not exists idx_audit_log_created_at_desc
+  on public.audit_log (created_at desc);
 
 -- 4. Asistencias
 create table if not exists public.attendance (
@@ -97,12 +127,14 @@ alter table public.owners enable row level security;
 alter table public.clients enable row level security;
 alter table public.membership_payments enable row level security;
 alter table public.attendance enable row level security;
+alter table public.audit_log enable row level security;
 
 revoke all on table
   public.owners,
   public.clients,
   public.membership_payments,
-  public.attendance
+  public.attendance,
+  public.audit_log
 from anon, authenticated;
 
 alter default privileges in schema public revoke all on tables from anon, authenticated;

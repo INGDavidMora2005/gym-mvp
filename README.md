@@ -183,6 +183,56 @@ duplicados antes de aplicarlo.
 - **Migraciones de datos:**
   - `sql/migrations/002_normalizar_telefonos.sql`: normaliza teléfonos a 10 dígitos colombianos.
   - `sql/migrations/003_asistencia_unica_por_dia.sql`: evita asistencias duplicadas por cliente y día de Bogotá.
+  - `sql/migrations/004_anulaciones_y_auditoria.sql`: agrega soporte para anular pagos y auditoría de acciones críticas.
+
+---
+
+## Anulaciones y Auditoría
+
+### Qué se puede anular / eliminar
+
+- **Pagos**: se puede anular un pago individual marcándolo como "anulado". Al anular:
+  - El pago queda registrado con el estado `voided_at`, `voided_by` y `void_reason`.
+  - El importe del pago se excluye de los cálculos de ingresos del mes actual y anterior.
+  - El vencimiento del cliente se recalcula usando solo los pagos no anulados (el pago anterior pasa a ser el último).
+
+- **Asistencias**: se puede eliminar una asistencia registrada por error. Al eliminar:
+  - La fila se borra completamente de la tabla.
+  - Se registra en `audit_log` con el motivo y la hora.
+
+- **Clientes**: al eliminar un cliente (soft delete):
+  - El cliente queda con `active = false`.
+  - Se registra en `audit_log` con el nombre del cliente.
+
+### Tabla de auditoría (`audit_log`)
+
+| Campo | Descripción |
+|-------|-------------|
+| `id` | UUID único |
+| `created_at` | Hora de la acción |
+| `owner_id` | UUID del dueño que realizó la acción |
+| `owner_name` | Nombre del dueño |
+| `action` | Tipo de acción (`PAYMENT_VOIDED`, `ATTENDANCE_DELETED`, `CLIENT_DELETED`) |
+| `entity` | Tabla afectada (`membership_payments`, `attendance`, `clients`) |
+| `entity_id` | UUID del registro afectado |
+| `details` | JSONB con información adicional (monto, motivo, nombre cliente, etc.) |
+
+### Consideraciones al anular pagos
+
+- **No recalcula períodos posteriores**: al anular un pago del pasado, los períodos futuros ya pagados NO se reajustan. Solo el cliente queda con el vencimiento recalculado al pago anterior.
+- **Ingresos históricos**: el importe anulado se mantiene en la tabla pero se excluye de los totales de ingresos.
+- **Historial visible**: en el detalle del cliente, TODOS los pagos aparecen (incluidos los anulados) con el estado visual de "Anulado" y el motivo.
+
+### Instalación
+
+Para instalar las columnas y tabla de auditoría, ejecuta la migración:
+
+```bash
+# En el SQL Editor de Supabase:
+\i sql/migrations/004_anulaciones_y_auditoria.sql
+```
+
+O, para instalaciones nuevas, el `sql/schema.sql` ya incluye todas las estructuras necesarias.
 
 ---
 

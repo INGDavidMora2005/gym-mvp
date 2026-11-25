@@ -41,6 +41,11 @@ export default async function ReportsPage() {
                 Ingresos Mes Actual
               </p>
               <p className="text-xl font-bold text-ink-900">{formatCOP(stats.revenue_this_month)}</p>
+              <p className="text-[11px] text-ink-500">
+                {stats.payments_this_month === 1
+                  ? '1 pago'
+                  : `${stats.payments_this_month} pagos`}
+              </p>
             </div>
           </Card>
 
@@ -91,7 +96,9 @@ export default async function ReportsPage() {
               >
                 <div>
                   <p className="font-semibold text-ink-900">{item.label}</p>
-                  <p className="text-ink-500">{item.count} clientes</p>
+                  <p className="text-ink-500">
+                    {item.count === 1 ? '1 pago' : `${item.count} pagos`}
+                  </p>
                 </div>
                 <p className="font-bold text-ink-900">{formatCOP(item.revenue)}</p>
               </div>

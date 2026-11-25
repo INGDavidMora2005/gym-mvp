@@ -64,6 +64,11 @@ export default async function DashboardPage() {
             <div>
               <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Ingresos Este Mes</p>
               <p className="text-xl font-bold text-ink-900">{formatCOP(stats.revenue_this_month)}</p>
+              <p className="text-[11px] text-ink-500">
+                {stats.payments_this_month === 1
+                  ? '1 pago'
+                  : `${stats.payments_this_month} pagos`}
+              </p>
             </div>
           </Card>
         </div>

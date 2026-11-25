@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientSchema, createClientSchema, uuidSchema } from './validation';
+import { clientSchema, createClientSchema, uuidSchema, voidReasonSchema } from './validation';
 
 const validClient = {
   name: 'Ana Gómez',
@@ -150,6 +150,58 @@ describe('pago inicial', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.first_payment).toBe(false);
+    }
+  });
+});
+
+describe('motivo de anulación (voidReasonSchema)', () => {
+  it('rechaza un valor vacío', () => {
+    const result = voidReasonSchema.safeParse('');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('El motivo debe tener al menos 3 caracteres');
+    }
+  });
+
+  it('rechaza dos caracteres (mínimo 3)', () => {
+    const result = voidReasonSchema.safeParse('ab');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('El motivo debe tener al menos 3 caracteres');
+    }
+  });
+
+  it('rechaza 201 caracteres (máximo 200)', () => {
+    const longReason = 'a'.repeat(201);
+    const result = voidReasonSchema.safeParse(longReason);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('El motivo no puede superar los 200 caracteres');
+    }
+  });
+
+  it('acepta un valor válido con espacios alrededor (se trimsea)', () => {
+    const result = voidReasonSchema.safeParse('  motivo válido  ');
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe('motivo válido');
+    }
+  });
+
+  it('acepta exactamente 3 caracteres', () => {
+    const result = voidReasonSchema.safeParse('abc');
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe('abc');
+    }
+  });
+
+  it('acepta exactamente 200 caracteres', () => {
+    const maxReason = 'a'.repeat(200);
+    const result = voidReasonSchema.safeParse(maxReason);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe(maxReason);
     }
   });
 });

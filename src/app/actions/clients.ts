@@ -13,6 +13,7 @@ import {
   parseFormData,
   uuidSchema,
 } from '@/lib/validation';
+import { logAudit } from '@/lib/audit';
 
 export async function createClientAction(
   _prevState: ActionState,
@@ -150,9 +151,10 @@ export async function updateClientAction(
 }
 
 export async function softDeleteClientAction(clientId: string) {
-  await requireOwner();
+  const owner = await requireOwner();
 
   if (!uuidSchema.safeParse(clientId).success) {
+    console.error('[softDeleteClientAction] ID inválido');
     throw new Error('No se pudo eliminar el cliente. Intenta de nuevo.');
   }
 
@@ -162,16 +164,28 @@ export async function softDeleteClientAction(clientId: string) {
     .update({ active: false })
     .eq('id', clientId)
     .eq('active', true)
-    .select('id');
+    .select('id, name')
+    .single();
 
   if (error) {
     console.error('[softDeleteClientAction]', error.message);
     throw new Error('No se pudo eliminar el cliente. Intenta de nuevo.');
   }
 
-  if (!deleted || deleted.length === 0) {
+  if (!deleted) {
     throw new Error('El cliente no existe o fue eliminado.');
   }
+
+  // Registrar auditoría
+  await logAudit({
+    owner,
+    action: 'CLIENT_DELETED',
+    entity: 'clients',
+    entityId: clientId,
+    details: {
+      name: deleted.name,
+    },
+  });
 
   revalidatePath('/dashboard');
   redirect('/dashboard');

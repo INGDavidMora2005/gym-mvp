@@ -72,6 +72,16 @@ export const createClientSchema = clientSchema.extend({
 
 export const uuidSchema = z.uuid({ error: 'ID de cliente inválido' });
 
+export const voidReasonSchema = z
+  .string({ error: 'El motivo es obligatorio' })
+  .trim()
+  .min(3, { error: 'El motivo debe tener al menos 3 caracteres' })
+  .max(200, { error: 'El motivo no puede superar los 200 caracteres' });
+
+export const voidPaymentFormSchema = z.object({
+  reason: voidReasonSchema,
+});
+
 export type ClientInput = z.infer<typeof clientSchema>;
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 

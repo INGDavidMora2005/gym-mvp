@@ -5,7 +5,9 @@ import { calculateMembershipStatus, getMembershipExpiration, formatDate, formatT
 import { Navigation } from '@/components/Navigation';
 import { Card, Button, StatusBadge } from '@/components/UIComponents';
 import { ClientForm } from '@/components/ClientForm';
+import { VoidPaymentForm } from '@/components/VoidPaymentForm';
 import { renewClientAction } from '@/app/actions/payments';
+import { deleteAttendanceAction } from '@/app/actions/attendance';
 import { softDeleteClientAction, updateClientAction } from '@/app/actions/clients';
 import { ArrowLeft, RefreshCw, MessageCircle, Trash2, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
@@ -32,7 +34,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   if (!client) notFound();
 
-  // Pagos
+  // Pagos históricos (TODOS para historial)
   const { data: payments, error: paymentsError } = await supabase
     .from('membership_payments')
     .select('*')
@@ -44,21 +46,36 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     throw new Error('No se pudieron cargar los pagos.');
   }
 
-  // Asistencias
+  // Pagos activos (solo no anulados) para cálculo de vencimiento
+  const { data: activePayments, error: activePaymentsError } = await supabase
+    .from('membership_payments')
+    .select('paid_at, period_end')
+    .eq('client_id', id)
+    .is('voided_at', null)
+    .order('paid_at', { ascending: false });
+
+  if (activePaymentsError) {
+    console.error('[ClientDetailPage:activePayments]', activePaymentsError.message);
+    throw new Error('No se pudieron cargar los pagos activos.');
+  }
+
+  // Asistencias - buscar id también para poder eliminar
   const { data: attendances, error: attendancesError } = await supabase
     .from('attendance')
-    .select('*')
+    .select('id, client_id, check_in, note, recorded_by')
     .eq('client_id', id)
-    .order('check_in', { ascending: false });
+    .order('check_in', { ascending: false })
+    .limit(10);
 
   if (attendancesError) {
     console.error('[ClientDetailPage:attendance]', attendancesError.message);
     throw new Error('No se pudieron cargar las asistencias.');
   }
 
-  const expiration = getMembershipExpiration(payments || []);
+  // Calcular expiración solo con pagos no anulados
+  const expiration = getMembershipExpiration(activePayments || []);
   const { status, next_expiration, days_left } = calculateMembershipStatus(expiration);
-  const lastPay = payments?.[0]?.paid_at || null;
+  const lastPay = activePayments?.[0]?.paid_at || null;
 
   const waUrl = buildWhatsAppUrl(
     client.phone,
@@ -165,17 +182,38 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               </h3>
 
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {payments?.map((p) => (
-                  <div key={p.id} className="p-2.5 rounded-lg bg-ink-100 text-xs flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold text-ink-800">{formatCOP(p.amount_cop)}</p>
-                      <p className="text-[11px] text-ink-500">{formatDate(p.paid_at)}</p>
+                {payments?.map((p) => {
+                  const isVoided = p.voided_at != null;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`p-2.5 rounded-lg text-xs flex justify-between items-center ${
+                        isVoided ? 'bg-rose-50 line-through' : 'bg-ink-100'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold text-ink-800">
+                          {isVoided ? (
+                            <span className="text-red-600">{formatCOP(p.amount_cop)} (Anulado)</span>
+                          ) : (
+                            formatCOP(p.amount_cop)
+                          )}
+                        </p>
+                        <p className="text-[11px] text-ink-500">{formatDate(p.paid_at)}</p>
+                        {isVoided && (
+                          <p className="text-[10px] text-red-600 mt-1">
+                            <strong>Motivo:</strong> {p.void_reason}
+                            <br />
+                            <strong>Anulado por:</strong> {p.voided_by}
+                          </p>
+                        )}
+                      </div>
+                      {!isVoided && (
+                        <VoidPaymentForm clientId={id} paymentId={p.id} />
+                      )}
                     </div>
-                    <span className="text-[10px] text-ink-500 bg-white px-2 py-0.5 rounded border border-ink-200">
-                      {p.recorded_by || 'Dueño'}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {(!payments || payments.length === 0) && (
                   <p className="text-xs text-ink-500 py-2 text-center">Sin pagos registrados</p>
@@ -191,12 +229,22 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               </h3>
 
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                {attendances?.slice(0, 5).map((a) => (
-                  <div key={a.id} className="text-xs text-ink-700 flex justify-between py-1 border-b border-ink-100 last:border-0">
+                {attendances?.map((a) => (
+                  <div key={a.id} className="text-xs text-ink-700 flex justify-between items-center py-1 border-b border-ink-100 last:border-0">
                     <span>{formatDate(a.check_in)}</span>
                     <span className="text-ink-500 font-mono text-[11px]">
                       {formatTime(a.check_in)}
                     </span>
+                    <details className="border border-ink-200 rounded px-2 py-1">
+                      <summary className="cursor-pointer text-xs text-ink-600 hover:text-ink-900">
+                        Eliminar
+                      </summary>
+                      <form action={deleteAttendanceAction.bind(null, id, a.id)}>
+                        <Button variant="danger" size="sm" type="submit" className="mt-1">
+                          Confirmar eliminación
+                        </Button>
+                      </form>
+                    </details>
                   </div>
                 ))}
 

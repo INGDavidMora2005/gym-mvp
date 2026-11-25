@@ -31,7 +31,12 @@ export interface MembershipPayment {
   recorded_by: string | null;
   note: string | null;
   created_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
 }
+
+export type AuditAction = 'PAYMENT_VOIDED' | 'ATTENDANCE_DELETED' | 'CLIENT_DELETED';
 
 export interface Attendance {
   id: string;
@@ -58,6 +63,7 @@ export interface DashboardStats {
   no_payment_clients: number;
   revenue_this_month: number;
   revenue_last_month: number;
+  payments_this_month: number;
   attendance_this_month: number;
   attendance_rate: { attended: number; total: number };
   not_returned: ClientWithStatus[];
