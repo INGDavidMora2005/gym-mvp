@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { Search, RefreshCw, MessageCircle, Phone, UserCheck, Calendar } from 'lucide-react';
-import { ClientStatus, ClientWithStatus } from '@/types';
-import { StatusBadge, Button } from './UIComponents';import {
+import { ClientWithStatus } from '@/types';
+import { StatusBadge, Button } from './UIComponents';
+import {
   formatDate,
   buildWhatsAppUrl,
   generateExpirationMessage,
@@ -12,28 +13,28 @@ import { StatusBadge, Button } from './UIComponents';import {
   formatCOP,
 } from '@/lib/utils';
 import Link from 'next/link';
+import { Pagination } from './Pagination';
 
 export function ClientList({
-  initialClients,
+  clients,
+  total,
+  page,
+  pageCount,
+  currentQ = '',
+  currentStatus = 'TODOS',
   onRenew,
   onRecordAttendance,
 }: {
-  initialClients: ClientWithStatus[];
+  clients: ClientWithStatus[];
+  total: number;
+  page: number;
+  pageCount: number;
+  currentQ?: string;
+  currentStatus?: string;
   onRenew: (clientId: string) => Promise<void>;
   onRecordAttendance: (clientId: string) => Promise<void>;
 }) {
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'TODOS' | 'ACTIVO' | 'POR_VENCER' | 'VENCIDO' | 'SIN_PAGO'>('TODOS');
   const [loadingId, setLoadingId] = useState<string | null>(null);
-
-  const filtered = initialClients.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search);
-    const matchesStatus =
-      filterStatus === 'TODOS' ? true : c.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
 
   const handleRenewClick = async (clientId: string) => {
     if (!confirm(`¿Confirmar renovación por ${formatCOP(FIXED_FEE_COP)} para este cliente?`)) return;
@@ -54,49 +55,71 @@ export function ClientList({
     }
   };
 
+  const buildStatusUrl = (status: string) => {
+    const params = new URLSearchParams();
+    if (currentQ) params.set('q', currentQ);
+    if (status !== 'TODOS') params.set('status', status);
+    const query = params.toString();
+    return query ? `?${query}` : '?';
+  };
+
   return (
     <div className="space-y-4">
       {/* Barra de Filtros y Búsqueda */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o teléfono..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-          />
-        </div>
+        <form method="get" className="relative w-full sm:w-80 flex gap-2">
+          {currentStatus && currentStatus !== 'TODOS' && (
+            <input type="hidden" name="status" value={currentStatus} />
+          )}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+            <input
+              type="text"
+              name="q"
+              defaultValue={currentQ}
+              placeholder="Buscar por nombre o teléfono..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+          >
+            Buscar
+          </button>
+        </form>
 
         <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          {(['TODOS', 'ACTIVO', 'POR_VENCER', 'VENCIDO', 'SIN_PAGO'] as const).map((st) => (
-            <button
-              key={st}
-              onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                filterStatus === st
-                  ? 'bg-brand-600 text-white shadow-xs'
-                  : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
-              }`}
-            >
-              {st === 'TODOS'
-                ? 'Todos'
-                : st === 'ACTIVO'
-                ? 'Activos'
-                : st === 'POR_VENCER'
-                ? 'Por Vencer'
-                : st === 'VENCIDO'
-                ? 'Vencidos'
-                : 'Sin pago'}
-            </button>
-          ))}
+          {(['TODOS', 'ACTIVO', 'POR_VENCER', 'VENCIDO', 'SIN_PAGO'] as const).map((st) => {
+            const isSelected = currentStatus === st;
+            return (
+              <Link
+                key={st}
+                href={buildStatusUrl(st)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  isSelected
+                    ? 'bg-brand-600 text-white shadow-xs'
+                    : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
+                }`}
+              >
+                {st === 'TODOS'
+                  ? 'Todos'
+                  : st === 'ACTIVO'
+                  ? 'Activos'
+                  : st === 'POR_VENCER'
+                  ? 'Por Vencer'
+                  : st === 'VENCIDO'
+                  ? 'Vencidos'
+                  : 'Sin pago'}
+              </Link>
+            );
+          })}
         </div>
       </div>
 
       {/* Lista de Tarjetas de Clientes */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((c) => {
+        {clients.map((c) => {
           const waUrl = buildWhatsAppUrl(
             c.phone,
             c.status === 'SIN_PAGO'
@@ -128,7 +151,7 @@ export function ClientList({
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-ink-400" />
                     <span>
-                      Vence:{" "}
+                      Vence:{' '}
                       <strong className="text-ink-800">
                         {c.days_left !== null
                           ? formatDate(c.next_expiration)
@@ -191,12 +214,29 @@ export function ClientList({
           );
         })}
 
-        {filtered.length === 0 && (
-          <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-ink-200">
-            <p className="text-sm text-ink-500 font-medium">No se encontraron clientes con esos filtros.</p>
+        {clients.length === 0 && (
+          <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-ink-200 space-y-3">
+            <p className="text-sm text-ink-500 font-medium">No se encontraron clientes</p>
+            <div>
+              <Link
+                href="?"
+                className="inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700 underline"
+              >
+                Limpiar búsqueda
+              </Link>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Paginación */}
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        q={currentQ}
+        status={currentStatus}
+      />
     </div>
   );
 }

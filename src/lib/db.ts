@@ -1,8 +1,6 @@
+import { cache } from 'react';
 import { createSupabaseAdminClient } from './supabase/admin';
-import {
-  getMembershipExpiration,
-  calculateMembershipStatus,
-} from './utils';
+import { calculateMembershipStatus } from './utils';
 import {
   startOfBogotaMonth,
   bogotaMonthKey,
@@ -14,95 +12,52 @@ import {
   RevenuePoint,
 } from '@/types';
 
-export async function fetchClientsWithStatus(): Promise<ClientWithStatus[]> {
+export const fetchClientsWithStatus = cache(async (): Promise<ClientWithStatus[]> => {
   const supabase = createSupabaseAdminClient();
   const now = new Date();
 
+  // 1. Obtener clientes activos
   const { data: clients, error: errClients } = await supabase
     .from('clients')
     .select('*')
     .eq('active', true)
-    .order('created_at', { ascending: false });
+    .order('name', { ascending: true }); // Ordenado por nombre
 
   if (errClients) {
     console.error('[fetchClientsWithStatus:clients]', errClients.message);
     throw new Error('No se pudieron cargar los clientes.');
   }
 
-  if (!clients) {
-    throw new Error('No se pudieron cargar los clientes.');
+  // 2. Obtener resumen de la vista (pagos y asistencias procesados)
+  const { data: overview, error: errOverview } = await supabase
+    .from('client_overview')
+    .select('*');
+
+  if (errOverview) {
+    console.error('[fetchClientsWithStatus:overview]', errOverview.message);
+    throw new Error('No se pudieron cargar los datos de resumen.');
   }
 
-  // Pagos con paid_at y period_end para calcular el vencimiento real (excluyendo anulados).
-  const { data: payments, error: errPayments } = await supabase
-    .from('membership_payments')
-    .select('client_id, paid_at, period_end')
-    .is('voided_at', null)
-    .order('paid_at', { ascending: false });
+  const overviewMap = new Map((overview || []).map((o) => [o.client_id, o]));
 
-  if (errPayments) {
-    console.error('[fetchClientsWithStatus:payments]', errPayments.message);
-    throw new Error('No se pudieron cargar los pagos.');
-  }
-
-  const paymentsByClient: Record<string, { paid_at: string; period_end: string | null }[]> = {};
-  if (payments) {
-    for (const p of payments) {
-      if (!paymentsByClient[p.client_id]) {
-        paymentsByClient[p.client_id] = [];
-      }
-      paymentsByClient[p.client_id].push({
-        paid_at: p.paid_at,
-        period_end: p.period_end,
-      });
-    }
-  }
-
-  // Asistencias: última y conteo del mes de Bogotá.
-  const { data: attendances, error: errAttendances } = await supabase
-    .from('attendance')
-    .select('client_id, check_in')
-    .order('check_in', { ascending: false });
-
-  if (errAttendances) {
-    console.error('[fetchClientsWithStatus:attendance]', errAttendances.message);
-    throw new Error('No se pudieron cargar las asistencias.');
-  }
-
-  const lastAttendanceMap: Record<string, string> = {};
-  const monthAttendanceMap: Record<string, number> = {};
-  const currentMonthKey = bogotaMonthKey(now);
-
-  if (attendances) {
-    for (const a of attendances) {
-      if (!lastAttendanceMap[a.client_id]) {
-        lastAttendanceMap[a.client_id] = a.check_in;
-      }
-      if (bogotaMonthKey(new Date(a.check_in)) === currentMonthKey) {
-        monthAttendanceMap[a.client_id] = (monthAttendanceMap[a.client_id] || 0) + 1;
-      }
-    }
-  }
-
-  return clients.map((c) => {
-    const clientPayments = paymentsByClient[c.id] || [];
-    const expiration = getMembershipExpiration(clientPayments);
+  return (clients || []).map((c) => {
+    const o = overviewMap.get(c.id);
     const { status, next_expiration, days_left } = calculateMembershipStatus(
-      expiration,
+      o?.expiration ? new Date(o.expiration) : null,
       now,
     );
 
     return {
       ...c,
       status,
-      last_payment_at: clientPayments[0]?.paid_at || null,
+      last_payment_at: o?.last_payment_at || null,
       next_expiration,
       days_left,
-      last_attendance: lastAttendanceMap[c.id] || null,
-      attendance_this_month: monthAttendanceMap[c.id] || 0,
+      last_attendance: o?.last_attendance || null,
+      attendance_this_month: o?.attendance_this_month || 0,
     };
   });
-}
+});
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const clients = await fetchClientsWithStatus();

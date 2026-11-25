@@ -8,16 +8,29 @@ import { recordAttendanceAction } from '@/app/actions/attendance';
 import { Users, AlertTriangle, CheckCircle, DollarSign, MessageCircle, UserX } from 'lucide-react';
 import { FIXED_FEE_COP, formatCOP, buildWhatsAppUrl, generateInactivityMessage } from '@/lib/utils';
 import { diffBogotaDays } from '@/lib/dates';
+import { filterAndPaginateClients, searchParamsSchema } from '@/lib/clients-query';
 
 export const revalidate = 0;
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const owner = await requireOwner();
+  const rawParams = await searchParams;
+  const { q, status, page } = searchParamsSchema.parse(rawParams);
 
-  const [clients, stats] = await Promise.all([
+  const [allClients, stats] = await Promise.all([
     fetchClientsWithStatus(),
     fetchDashboardStats(),
   ]);
+
+  const { items, total, page: currentPage, pageCount } = filterAndPaginateClients(allClients, {
+    q,
+    status,
+    page,
+  });
 
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">
@@ -115,7 +128,12 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           <h2 className="font-display text-xl font-bold text-ink-900">Directorio de Clientes</h2>
           <ClientList
-            initialClients={clients}
+            clients={items}
+            total={total}
+            page={currentPage}
+            pageCount={pageCount}
+            currentQ={q}
+            currentStatus={status}
             onRenew={renewClientAction}
             onRecordAttendance={recordAttendanceAction}
           />

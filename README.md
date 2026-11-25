@@ -184,6 +184,20 @@ duplicados antes de aplicarlo.
   - `sql/migrations/002_normalizar_telefonos.sql`: normaliza teléfonos a 10 dígitos colombianos.
   - `sql/migrations/003_asistencia_unica_por_dia.sql`: evita asistencias duplicadas por cliente y día de Bogotá.
   - `sql/migrations/004_anulaciones_y_auditoria.sql`: agrega soporte para anular pagos y auditoría de acciones críticas.
+  - `sql/migrations/005_vista_resumen_clientes.sql`: crea la vista `public.client_overview` para la consulta optimizada de vencimientos y asistencias sin descargar todo el historial.
+
+---
+
+## Búsqueda y Paginación
+
+La búsqueda y paginación de clientes se realiza en el servidor mediante parámetros de URL (`q`, `status`, `page`):
+
+- **Parámetros de URL:**
+  - `q`: Término de búsqueda por nombre (insensible a tildes y mayúsculas) o por teléfono (comparación por dígitos parciales con mínimo 3 dígitos).
+  - `status`: Filtro por estado (`TODOS`, `ACTIVO`, `POR_VENCER`, `VENCIDO`, `SIN_PAGO`).
+  - `page`: Número de página actual (entero `>= 1`).
+- **Tamaño de página:** Definido por la constante exportada `CLIENTS_PAGE_SIZE = 20`.
+- **Vista SQL `client_overview`:** Optimiza las consultas agregando `expiration`, `last_payment_at`, `last_attendance` y `attendance_this_month` por cliente en la base de datos, evitando la descarga completa de historiales de pagos y asistencias en la aplicación.
 
 ---
 

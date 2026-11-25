@@ -129,6 +129,49 @@ alter table public.membership_payments enable row level security;
 alter table public.attendance enable row level security;
 alter table public.audit_log enable row level security;
 
+-- Vista resumen
+create or replace view public.client_overview with (security_invoker = true) as 
+with 
+  valid_payments as (
+    select 
+      client_id, 
+      paid_at, 
+      period_end 
+    from public.membership_payments 
+    where voided_at is null
+  ),
+  last_payments as (
+    select 
+      client_id, 
+      max(paid_at) as last_payment_at,
+      -- Debe coincidir con getMembershipExpiration() en src/lib/utils.ts: si cambia la regla, cámbiala en ambos sitios
+      max(coalesce(period_end, paid_at + interval '720 hours')) as expiration
+    from valid_payments
+    group by client_id
+  ),
+  attendances as (
+    select 
+      client_id, 
+      max(check_in) as last_attendance,
+      count(*) filter (
+        where check_in >= date_trunc('month', now() at time zone 'America/Bogota') at time zone 'America/Bogota'
+      ) as attendance_this_month
+    from public.attendance
+    group by client_id
+  )
+select 
+  c.id as client_id,
+  lp.expiration,
+  lp.last_payment_at,
+  a.last_attendance,
+  coalesce(a.attendance_this_month, 0) as attendance_this_month
+from public.clients c
+left join last_payments lp on c.id = lp.client_id
+left join attendances a on c.id = a.client_id
+where c.active = true;
+
+revoke all on public.client_overview from anon, authenticated;
+
 revoke all on table
   public.owners,
   public.clients,
