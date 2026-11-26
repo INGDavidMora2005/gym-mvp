@@ -290,69 +290,64 @@ Ejecuta `sql/migrations/006_metodo_pago_y_cierres.sql` para:
 
 ---
 
-## 📤 Exportación CSV
+## 📊 Reporte Excel
 
-La aplicación permite exportar pagos y asistencias a CSV mediante dos endpoints:
+La aplicación genera un único reporte Excel (`.xlsx`) con formato y estadísticas:
 
-### Endpoints
-- `GET /api/export/payments?from=YYYY-MM-DD&to=YYYY-MM-DD` — Exporta pagos
-- `GET /api/export/attendance?from=YYYY-MM-DD&to=YYYY-MM-DD` — Exporta asistencias
+### Endpoint
+- `GET /api/export/report?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
-### Formato del archivo
-- **Separador:** Punto y coma (`;`) — estándar en Excel para español (Colombia).
-- **Codificación:** UTF-8 con **BOM** (`\uFEFF`) para que Excel abra tildes y ñ correctamente.
-- **Saltos de línea:** CRLF (`\r\n`).
-- **Encabezados:** Primera fila con nombres de columnas.
+### Hojas del libro
 
-### Columnas (Pagos)
-| Columna | Descripción |
-|---------|-------------|
-| `fecha` | Fecha del pago en Bogotá (YYYY-MM-DD) |
-| `hora` | Hora del pago en Bogotá (HH:mm) |
-| `cliente` | Nombre del cliente |
-| `monto_cop` | Monto en COP (entero, sin separadores de miles) |
-| `metodo` | Método de pago (`EFECTIVO`, `NEQUI`, `DAVPLATA`, `PSE`, `OTRO`, `Sin método`) |
-| `registrado_por` | Quién registró el pago |
-| `periodo_inicio` | Inicio del periodo (YYYY-MM-DD) |
-| `periodo_fin` | Fin del periodo (YYYY-MM-DD) |
-| `estado` | `VIGENTE` o `ANULADO` |
-| `anulado_por` | Quién anuló (si aplica) |
-| `motivo_anulacion` | Motivo de anulación (si aplica) |
+**1. Resumen** (pestaña activa, cuadrícula oculta)
+- Título, periodo (`dd/mm/yyyy a dd/mm/yyyy`) y línea de generación con fecha/hora de Bogotá y el nombre del dueño.
+- **Ingresos del periodo:** total, número de pagos, ticket promedio y pagos anulados (cantidad y monto).
+- **Ingresos por método:** tabla `Método | Pagos | Total | %` con barras de datos y fila de total.
+- **Asistencia del periodo:** total, clientes distintos, promedio por día y día con más asistencia; tabla `Fecha | Asistentes` con todos los días del rango (incluidos los de 0) y barras de datos.
+- **Situación actual de clientes** (aclara que es *a la fecha de descarga*, no del periodo): total, activos, por vencer, vencidos, sin pago, tasa de asistencia del mes e ingresos del mes actual y anterior.
+- **Ingresos de los últimos 6 meses:** tabla `Mes | Pagos | Ingresos` con barras de datos.
 
-### Columnas (Asistencias)
-| Columna | Descripción |
-|---------|-------------|
-| `fecha` | Fecha de la asistencia en Bogotá (YYYY-MM-DD) |
-| `hora` | Hora de la asistencia en Bogotá (HH:mm) |
-| `cliente` | Nombre del cliente |
-| `registrado_por` | Quién registró la asistencia |
+**2. Pagos** (tabla `TablaPagos`, con filtros y encabezado fijo)
+- Columnas: Fecha, Hora, Cliente, Monto, Método, Registrado por, Inicio periodo, Fin periodo, Estado, Anulado por, Motivo de anulación.
+- Fechas reales (`dd/mm/yyyy`), horas (`hh:mm`) y montos numéricos (`$ #,##0`).
+- Las filas **ANULADAS** se muestran con fuente roja y tachado.
+- Fila de totales con `SUMIFS` que suma **solo los pagos VIGENTES**.
 
-### Protección contra inyección de fórmulas
-Los campos de texto libre (nombres, notas, motivos, quién registró) se protegen anteponiendo un apóstrofo (`'`) si el valor empieza con `=`, `+`, `-`, `@`, tabulador o retorno de carro. **No se aplica a números ni fechas generadas por el sistema**, por lo que montos negativos o enteros se escriben tal cual.
+**3. Asistencias** (tabla `TablaAsistencias`, con filtros y encabezado fijo)
+- Columnas: Fecha, Hora, Cliente, Registrado por.
+
+### Fechas y horas
+Todas las fechas/horas del reporte son la **hora de pared de Bogotá** (UTC-5). Excel no maneja zonas horarias: cada celda se construye con `Date.UTC(año, mes, día, hora, minuto)` a partir de los componentes en Bogotá, de modo que lo que se ve en el archivo es la hora local del gimnasio sin importar el TZ del servidor.
 
 ### Límites
-- **Rango máximo:** 366 días.
-- **Filas máximas:** 50.000. Si se supera, responde `413` pidiendo acortar el rango. **Nunca trunca en silencio.**
-- **Paginación interna:** Lectura por lotes de 1.000 filas con `.range()` hasta agotar resultados.
+- **Rango máximo:** 366 días (validado con `exportRangeSchema`).
+- **Filas máximas:** 50.000 entre pagos y asistencias. Si se supera, responde `413` pidiendo acortar el rango. **Nunca trunca en silencio.**
+- **Paginación interna:** lectura por lotes de 1.000 filas con `.range()` y orden estable (`paid_at asc, id asc` / `check_in asc, id asc`).
+- Los pagos **anulados se incluyen** en la hoja Pagos (tachados) pero se excluyen de los ingresos del Resumen.
+
+### Seguridad
+- ExcelJS solo se importa desde código de servidor (route handler); nunca desde Client Components.
+- Los textos libres (nombres, motivos, quién registró) se escriben como valores de texto, no como fórmulas, para evitar inyección de fórmulas.
 
 ### Auditoría
-Cada exportación exitosa registra una entrada en `audit_log` con acción `DATA_EXPORTED` y details:
+Cada descarga exitosa registra en `audit_log` la acción `DATA_EXPORTED` con details:
 ```json
 {
-  "type": "payments" | "attendance",
+  "type": "report_xlsx",
   "from": "YYYY-MM-DD",
   "to": "YYYY-MM-DD",
-  "rows": 123
+  "payments_rows": 123,
+  "attendance_rows": 456
 }
 ```
-Si el registro de auditoría falla, **no se rompe la descarga** (el CSV ya se generó).
+Si el registro de auditoría falla, **no se rompe la descarga**.
 
 ### UI
-- En **Reportes** (`/reports`): tarjeta "Exportar datos" con formulario `method="get"`, dos `input type="date"` (desde/hasta, por defecto mes actual de Bogotá, max = hoy) y dos botones `submit` con `formAction` a cada endpoint. Funciona **sin JavaScript adicional**.
-- En **Caja** (`/caja`): enlace "Exportar pagos de este día (CSV)" que apunta a `/api/export/payments?from=<fecha>&to=<fecha>`.
+- En **Reportes** (`/reports`): tarjeta "Exportar reporte" con formulario `method="get"` a `/api/export/report`, dos `input type="date"` (desde/hasta, por defecto el mes actual de Bogotá, max = hoy) y el botón "Descargar reporte (Excel)".
+- En **Caja** (`/caja`): enlace "Descargar reporte del día (Excel)" que apunta a `/api/export/report?from=<fecha>&to=<fecha>`.
 
 ### Autenticación
-Los endpoints usan `getCurrentOwner()` (no `requireOwner`). Si no hay sesión válida, responden `401` con JSON `{ error: "No autenticado" }`. Probable con `curl` sin cookies.
+El endpoint usa `getCurrentOwner()` (no `requireOwner`). Sin sesión válida responde `401` con JSON `{ error: "No autenticado" }`.
 
 ### Migración 007
 Ejecuta `sql/migrations/007_auditoria_exportaciones.sql` para añadir `DATA_EXPORTED` a la constraint de `audit_log.action`.

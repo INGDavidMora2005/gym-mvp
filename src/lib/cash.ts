@@ -58,8 +58,13 @@ export function clientNameFrom(embed: unknown): string {
  * Resume un array de pagos de membresía agrupando por método de pago.
  * payment_method null se cuenta como 'SIN_METODO'.
  * Incluye todas las claves aunque estén en 0.
+ *
+ * Acepta cualquier objeto con `amount_cop` y `payment_method` para poder
+ * reutilizarse con filas de reportes que no traen el resto de columnas.
  */
-export function summarizeCash(payments: MembershipPayment[]): CashSummary {
+export function summarizeCash(
+  payments: ReadonlyArray<Pick<MembershipPayment, 'amount_cop' | 'payment_method'>>,
+): CashSummary {
   const summary = emptyCashSummary();
 
   for (const payment of payments) {

@@ -26,6 +26,37 @@ export function toBogotaDayKey(date: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+export interface BogotaDateTimeParts {
+  year: number;
+  /** Mes 1-12. */
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+}
+
+/**
+ * Componentes de fecha/hora de Bogotá (hora de pared) de un instante UTC.
+ * Útil para construir fechas "sin zona horaria" en Excel: Excel no entiende
+ * de zonas horarias, así que se escribe la hora local tal como se ve en Bogotá.
+ */
+export function bogotaDateTimeParts(date: Date): BogotaDateTimeParts {
+  const d = new Date(toBogotaLocalMs(date));
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth() + 1,
+    day: d.getUTCDate(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+  };
+}
+
+/** 'HH:mm' en calendario de Bogotá. */
+export function toBogotaTimeKey(date: Date): string {
+  const { hour, minute } = bogotaDateTimeParts(date);
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 /** Instante UTC de las 00:00:00.000 del día de Bogotá de `date`. */
 export function startOfBogotaDay(date: Date): Date {
   const d = new Date(toBogotaLocalMs(date));

@@ -145,11 +145,11 @@ export default async function CashPage({
               </button>
             </form>
             <a
-              href={`/api/export/payments?from=${businessDate}&to=${businessDate}`}
+              href={`/api/export/report?from=${businessDate}&to=${businessDate}`}
               className="px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-2 whitespace-nowrap"
             >
               <Download className="w-4 h-4" />
-              Exportar pagos de este día (CSV)
+              Descargar reporte del día (Excel)
             </a>
           </div>
         </div>
