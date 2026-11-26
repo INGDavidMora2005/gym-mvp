@@ -137,6 +137,71 @@ export const voidPaymentFormSchema = z.object({
   reason: voidReasonSchema,
 });
 
+/**
+ * Esquema para validar rango de exportación.
+ * - from y to: YYYY-MM-DD válidos en Bogotá
+ * - to >= from
+ * - Rango máximo 366 días
+ * - Ninguna fecha futura (según Bogotá)
+ */
+export const exportRangeSchema = z
+  .object({
+    from: z
+      .string({ error: 'La fecha desde es obligatoria' })
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Formato de fecha inválido (YYYY-MM-DD)' })
+      .refine((dateStr) => {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+        if (!match) return false;
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1;
+        const day = parseInt(match[3], 10);
+        const date = new Date(Date.UTC(year, month, day));
+        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+          return false;
+        }
+        // No futura según Bogotá
+        const now = new Date();
+        const bogotaOffsetMs = -5 * 60 * 60 * 1000;
+        const bogotaNow = new Date(now.getTime() + bogotaOffsetMs);
+        const bogotaToday = new Date(Date.UTC(bogotaNow.getUTCFullYear(), bogotaNow.getUTCMonth(), bogotaNow.getUTCDate()));
+        const inputDate = new Date(Date.UTC(year, month, day));
+        return inputDate <= bogotaToday;
+      }, { error: 'La fecha desde no puede ser futura o es inválida' }),
+    to: z
+      .string({ error: 'La fecha hasta es obligatoria' })
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Formato de fecha inválido (YYYY-MM-DD)' })
+      .refine((dateStr) => {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+        if (!match) return false;
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1;
+        const day = parseInt(match[3], 10);
+        const date = new Date(Date.UTC(year, month, day));
+        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+          return false;
+        }
+        const now = new Date();
+        const bogotaOffsetMs = -5 * 60 * 60 * 1000;
+        const bogotaNow = new Date(now.getTime() + bogotaOffsetMs);
+        const bogotaToday = new Date(Date.UTC(bogotaNow.getUTCFullYear(), bogotaNow.getUTCMonth(), bogotaNow.getUTCDate()));
+        const inputDate = new Date(Date.UTC(year, month, day));
+        return inputDate <= bogotaToday;
+      }, { error: 'La fecha hasta no puede ser futura o es inválida' }),
+  })
+  .refine((data) => {
+    const fromDate = new Date(data.from + 'T00:00:00Z');
+    const toDate = new Date(data.to + 'T00:00:00Z');
+    return toDate >= fromDate;
+  }, { error: 'La fecha hasta debe ser igual o posterior a la fecha desde' })
+  .refine((data) => {
+    const fromDate = new Date(data.from + 'T00:00:00Z');
+    const toDate = new Date(data.to + 'T00:00:00Z');
+    const diffDays = Math.round((toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000));
+    return diffDays <= 366;
+  }, { error: 'El rango máximo permitido es de 366 días' });
+
+export type ExportRangeInput = z.infer<typeof exportRangeSchema>;
+
 export type ClientInput = z.infer<typeof clientSchema>;
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 

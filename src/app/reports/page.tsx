@@ -4,7 +4,8 @@ import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/UIComponents';
 import { RevenueChart } from '@/components/RevenueChart';
 import { formatCOP } from '@/lib/utils';
-import { DollarSign, Calendar, TrendingUp, Users } from 'lucide-react';
+import { toBogotaDayKey, startOfBogotaMonth } from '@/lib/dates';
+import { DollarSign, Calendar, TrendingUp, Users, Download } from 'lucide-react';
 
 export const revalidate = 0;
 
@@ -104,6 +105,62 @@ export default async function ReportsPage() {
               </div>
             ))}
           </div>
+        </Card>
+
+        {/* Exportar datos */}
+        <Card>
+          <h2 className="font-display text-lg font-semibold text-ink-900 mb-4 flex items-center gap-2">
+            <Download className="w-5 h-5 text-brand-600" />
+            <span>Exportar datos</span>
+          </h2>
+          <p className="text-sm text-ink-500 mb-4">
+            Descarga pagos y asistencias en CSV (separador <code className="font-mono text-brand-600">;</code>, codificación UTF-8 con BOM para Excel).
+            Rango máximo: 366 días / 50.000 filas.
+          </p>
+          <form method="get" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            <div>
+              <label htmlFor="from" className="block text-xs font-medium text-ink-700 mb-1">
+                Desde
+              </label>
+              <input
+                type="date"
+                id="from"
+                name="from"
+                defaultValue={toBogotaDayKey(startOfBogotaMonth(new Date()))}
+                max={toBogotaDayKey(new Date())}
+                className="w-full px-3 py-2 rounded-lg border border-ink-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="to" className="block text-xs font-medium text-ink-700 mb-1">
+                Hasta
+              </label>
+              <input
+                type="date"
+                id="to"
+                name="to"
+                defaultValue={toBogotaDayKey(new Date())}
+                max={toBogotaDayKey(new Date())}
+                className="w-full px-3 py-2 rounded-lg border border-ink-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <button
+              type="submit"
+              formAction="/api/export/payments"
+              className="px-4 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Descargar pagos (CSV)
+            </button>
+            <button
+              type="submit"
+              formAction="/api/export/attendance"
+              className="px-4 py-2.5 rounded-lg bg-sky-600 text-white text-sm font-medium hover:bg-sky-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Descargar asistencias (CSV)
+            </button>
+          </form>
         </Card>
 
         {/* KPIs adicionales */}

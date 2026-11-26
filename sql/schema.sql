@@ -133,7 +133,7 @@ create table if not exists public.audit_log (
   owner_id uuid references public.owners (id),
   owner_name text not null,
   action text not null check (
-    action in ('PAYMENT_VOIDED', 'ATTENDANCE_DELETED', 'CLIENT_DELETED', 'CASH_CLOSED')
+    action in ('PAYMENT_VOIDED', 'ATTENDANCE_DELETED', 'CLIENT_DELETED', 'CASH_CLOSED', 'DATA_EXPORTED')
   ),
   entity text not null,
   entity_id uuid,

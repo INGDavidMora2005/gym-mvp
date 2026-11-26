@@ -7,7 +7,7 @@ import { CashHistory } from '@/components/CashHistory';
 import { parseBogotaDateKey, toBogotaDayKey } from '@/lib/dates';
 import { cashDateSchema } from '@/lib/validation';
 import { clientNameFrom } from '@/lib/cash';
-import { Wallet } from 'lucide-react';
+import { Wallet, Download } from 'lucide-react';
 import Link from 'next/link';
 import { CashClosing, MembershipPayment } from '@/types';
 
@@ -129,20 +129,29 @@ export default async function CashPage({
             <p className="text-sm text-ink-600 mt-1">Resumen diario por método y cierre de efectivo</p>
           </div>
 
-          <form method="get" className="flex items-center gap-3 w-full sm:w-auto">
-            <label htmlFor="date" className="sr-only">Fecha</label>
-            <input
-              type="date"
-              id="date"
-              name="date"
-              defaultValue={businessDate}
-              max={toBogotaDayKey(new Date())}
-              className="px-4 py-2.5 rounded-xl border border-ink-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
-            />
-            <button type="submit" className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">
-              Ver
-            </button>
-          </form>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            <form method="get" className="flex items-center gap-3 w-full sm:w-auto">
+              <label htmlFor="date" className="sr-only">Fecha</label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                defaultValue={businessDate}
+                max={toBogotaDayKey(new Date())}
+                className="px-4 py-2.5 rounded-xl border border-ink-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
+              />
+              <button type="submit" className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">
+                Ver
+              </button>
+            </form>
+            <a
+              href={`/api/export/payments?from=${businessDate}&to=${businessDate}`}
+              className="px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <Download className="w-4 h-4" />
+              Exportar pagos de este día (CSV)
+            </a>
+          </div>
         </div>
 
         {/* Resumen del día */}

@@ -8,6 +8,7 @@ import {
   cashDateSchema,
   countedCashSchema,
   noteSchema,
+  exportRangeSchema,
   PAYMENT_METHODS,
 } from './validation';
 import { parseBogotaDateKey } from './dates';
@@ -230,11 +231,20 @@ describe('paymentMethodSchema (exportado)', () => {
 });
 
 describe('cashDateSchema', () => {
-  // Fechas fijas para evitar dependencia de la zona horaria del proceso
-  // Usamos fechas que sabemos que son válidas
-  const todayBogota = '2026-11-24';
-  const yesterdayBogota = '2026-11-23';
-  const tomorrowBogota = '2026-11-25';
+  // Calcular fechas relativas a "hoy en Bogotá" para evitar dependencia de zona horaria
+  function getBogotaDayKey(date: Date): string {
+    const bogotaOffsetMs = -5 * 60 * 60 * 1000;
+    const bogotaDate = new Date(date.getTime() + bogotaOffsetMs);
+    const y = bogotaDate.getUTCFullYear();
+    const m = String(bogotaDate.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(bogotaDate.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const now = new Date();
+  const todayBogota = getBogotaDayKey(now);
+  const yesterdayBogota = getBogotaDayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const tomorrowBogota = getBogotaDayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
 
   it('acepta fecha de hoy (YYYY-MM-DD)', () => {
     const result = cashDateSchema.safeParse(todayBogota);
@@ -377,5 +387,115 @@ describe('parseBogotaDateKey', () => {
     expect(date.getUTCFullYear()).toBe(2024);
     expect(date.getUTCMonth()).toBe(1);
     expect(date.getUTCDate()).toBe(29);
+  });
+});
+
+describe('exportRangeSchema', () => {
+  // Calcular fechas relativas a "hoy en Bogotá" para evitar dependencia de zona horaria
+  function getBogotaDayKey(date: Date): string {
+    const bogotaOffsetMs = -5 * 60 * 60 * 1000;
+    const bogotaDate = new Date(date.getTime() + bogotaOffsetMs);
+    const y = bogotaDate.getUTCFullYear();
+    const m = String(bogotaDate.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(bogotaDate.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const now = new Date();
+  const today = getBogotaDayKey(now);
+  const yesterday = getBogotaDayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const lastWeek = getBogotaDayKey(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
+  const lastMonth = getBogotaDayKey(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
+  const future = getBogotaDayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+  const invalidFormat = '24/11/2026';
+  const invalidDate = '2026-02-30';
+
+  it('acepta rango válido (hoy a hoy)', () => {
+    const result = exportRangeSchema.safeParse({ from: today, to: today });
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta rango válido (semana pasada a hoy)', () => {
+    const result = exportRangeSchema.safeParse({ from: lastWeek, to: today });
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta rango válido (mes pasado a hoy)', () => {
+    const result = exportRangeSchema.safeParse({ from: lastMonth, to: today });
+    expect(result.success).toBe(true);
+  });
+
+  it('rechaza fecha desde futura', () => {
+    const result = exportRangeSchema.safeParse({ from: future, to: future });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('futura');
+    }
+  });
+
+  it('rechaza fecha hasta futura', () => {
+    const result = exportRangeSchema.safeParse({ from: today, to: future });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('futura');
+    }
+  });
+
+  it('rechaza formato inválido en desde', () => {
+    const result = exportRangeSchema.safeParse({ from: invalidFormat, to: today });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza formato inválido en hasta', () => {
+    const result = exportRangeSchema.safeParse({ from: today, to: invalidFormat });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza fecha inexistente en desde', () => {
+    const result = exportRangeSchema.safeParse({ from: invalidDate, to: today });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza fecha inexistente en hasta', () => {
+    const result = exportRangeSchema.safeParse({ from: today, to: invalidDate });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza cuando hasta < desde', () => {
+    const result = exportRangeSchema.safeParse({ from: today, to: yesterday });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('posterior');
+    }
+  });
+
+  it('rechaza rango mayor a 366 días', () => {
+    const result = exportRangeSchema.safeParse({ from: '2025-01-01', to: today });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('366');
+    }
+  });
+
+  it('acepta rango exactamente de 366 días', () => {
+    // 2025-11-24 a 2026-11-24 = 366 días (año bisiesto incluido)
+    const result = exportRangeSchema.safeParse({ from: '2025-11-24', to: '2026-11-24' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rechaza cuando falta desde', () => {
+    const result = exportRangeSchema.safeParse({ to: today });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('obligatoria');
+    }
+  });
+
+  it('rechaza cuando falta hasta', () => {
+    const result = exportRangeSchema.safeParse({ from: today });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('obligatoria');
+    }
   });
 });

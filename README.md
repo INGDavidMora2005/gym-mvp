@@ -186,6 +186,7 @@ duplicados antes de aplicarlo.
   - `sql/migrations/004_anulaciones_y_auditoria.sql`: agrega soporte para anular pagos y auditoría de acciones críticas.
   - `sql/migrations/005_vista_resumen_clientes.sql`: crea la vista `public.client_overview` para la consulta optimizada de vencimientos y asistencias sin descargar todo el historial.
   - `sql/migrations/006_metodo_pago_y_cierres.sql`: añade método de pago a cada pago, tabla `cash_closings` para cierres de caja diarios y acción `CASH_CLOSED` en auditoría.
+- `sql/migrations/007_auditoria_exportaciones.sql`: añade acción `DATA_EXPORTED` a la constraint de `audit_log.action` para registrar exportaciones de datos.
 
 ---
 
@@ -286,6 +287,75 @@ Ejecuta `sql/migrations/006_metodo_pago_y_cierres.sql` para:
 1. Añadir `payment_method` a `membership_payments` (nullable, sin backfill).
 2. Crear tabla `cash_closings` (repetible por `business_date`, sin unique).
 3. Añadir `CASH_CLOSED` a la constraint de `audit_log.action`.
+
+---
+
+## 📤 Exportación CSV
+
+La aplicación permite exportar pagos y asistencias a CSV mediante dos endpoints:
+
+### Endpoints
+- `GET /api/export/payments?from=YYYY-MM-DD&to=YYYY-MM-DD` — Exporta pagos
+- `GET /api/export/attendance?from=YYYY-MM-DD&to=YYYY-MM-DD` — Exporta asistencias
+
+### Formato del archivo
+- **Separador:** Punto y coma (`;`) — estándar en Excel para español (Colombia).
+- **Codificación:** UTF-8 con **BOM** (`\uFEFF`) para que Excel abra tildes y ñ correctamente.
+- **Saltos de línea:** CRLF (`\r\n`).
+- **Encabezados:** Primera fila con nombres de columnas.
+
+### Columnas (Pagos)
+| Columna | Descripción |
+|---------|-------------|
+| `fecha` | Fecha del pago en Bogotá (YYYY-MM-DD) |
+| `hora` | Hora del pago en Bogotá (HH:mm) |
+| `cliente` | Nombre del cliente |
+| `monto_cop` | Monto en COP (entero, sin separadores de miles) |
+| `metodo` | Método de pago (`EFECTIVO`, `NEQUI`, `DAVPLATA`, `PSE`, `OTRO`, `Sin método`) |
+| `registrado_por` | Quién registró el pago |
+| `periodo_inicio` | Inicio del periodo (YYYY-MM-DD) |
+| `periodo_fin` | Fin del periodo (YYYY-MM-DD) |
+| `estado` | `VIGENTE` o `ANULADO` |
+| `anulado_por` | Quién anuló (si aplica) |
+| `motivo_anulacion` | Motivo de anulación (si aplica) |
+
+### Columnas (Asistencias)
+| Columna | Descripción |
+|---------|-------------|
+| `fecha` | Fecha de la asistencia en Bogotá (YYYY-MM-DD) |
+| `hora` | Hora de la asistencia en Bogotá (HH:mm) |
+| `cliente` | Nombre del cliente |
+| `registrado_por` | Quién registró la asistencia |
+
+### Protección contra inyección de fórmulas
+Los campos de texto libre (nombres, notas, motivos, quién registró) se protegen anteponiendo un apóstrofo (`'`) si el valor empieza con `=`, `+`, `-`, `@`, tabulador o retorno de carro. **No se aplica a números ni fechas generadas por el sistema**, por lo que montos negativos o enteros se escriben tal cual.
+
+### Límites
+- **Rango máximo:** 366 días.
+- **Filas máximas:** 50.000. Si se supera, responde `413` pidiendo acortar el rango. **Nunca trunca en silencio.**
+- **Paginación interna:** Lectura por lotes de 1.000 filas con `.range()` hasta agotar resultados.
+
+### Auditoría
+Cada exportación exitosa registra una entrada en `audit_log` con acción `DATA_EXPORTED` y details:
+```json
+{
+  "type": "payments" | "attendance",
+  "from": "YYYY-MM-DD",
+  "to": "YYYY-MM-DD",
+  "rows": 123
+}
+```
+Si el registro de auditoría falla, **no se rompe la descarga** (el CSV ya se generó).
+
+### UI
+- En **Reportes** (`/reports`): tarjeta "Exportar datos" con formulario `method="get"`, dos `input type="date"` (desde/hasta, por defecto mes actual de Bogotá, max = hoy) y dos botones `submit` con `formAction` a cada endpoint. Funciona **sin JavaScript adicional**.
+- En **Caja** (`/caja`): enlace "Exportar pagos de este día (CSV)" que apunta a `/api/export/payments?from=<fecha>&to=<fecha>`.
+
+### Autenticación
+Los endpoints usan `getCurrentOwner()` (no `requireOwner`). Si no hay sesión válida, responden `401` con JSON `{ error: "No autenticado" }`. Probable con `curl` sin cookies.
+
+### Migración 007
+Ejecuta `sql/migrations/007_auditoria_exportaciones.sql` para añadir `DATA_EXPORTED` a la constraint de `audit_log.action`.
 
 ---
 

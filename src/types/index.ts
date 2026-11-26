@@ -37,7 +37,7 @@ export interface MembershipPayment {
   payment_method: PaymentMethod | null;
 }
 
-export type AuditAction = 'PAYMENT_VOIDED' | 'ATTENDANCE_DELETED' | 'CLIENT_DELETED' | 'CASH_CLOSED';
+export type AuditAction = 'PAYMENT_VOIDED' | 'ATTENDANCE_DELETED' | 'CLIENT_DELETED' | 'CASH_CLOSED' | 'DATA_EXPORTED';
 
 export interface CashClosing {
   id: string;
