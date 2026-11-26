@@ -163,6 +163,7 @@ export default async function CashPage({
 
         {/* Formulario de cierre de caja */}
         <CashClosingForm
+          key={businessDate}
           businessDate={businessDate}
           expectedCashCop={currentExpected}
           latestClosing={latestClosing}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState } from 'react';
-import { useState } from 'react';
 import { closeCashAction } from '@/app/actions/cash';
 import { CashClosing } from '@/types';
 import { Card, Button } from './UIComponents';
@@ -20,14 +19,10 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
     expected_cash_cop: expectedCashCop,
   });
 
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [lastDifference, setLastDifference] = useState<number | null>(null);
-
-  // Mostrar diferencia después de un cierre exitoso
-  if (formState.ok && formState.difference_cop !== undefined) {
-    setLastDifference(formState.difference_cop);
-    setShowSuccess(true);
-  }
+  const lastDifference =
+  formState.ok && formState.difference_cop !== undefined
+    ? formState.difference_cop
+    : null;
 
   const differenceColor = lastDifference === null ? '' :
     lastDifference === 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
@@ -138,7 +133,7 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
             )}
           </Button>
 
-          {showSuccess && lastDifference !== null && (
+          {lastDifference !== null && (
             <div className={`px-4 py-2 rounded-xl border font-mono text-sm font-semibold ${differenceColor} animate-fade-in`}>
               {differenceLabel}
             </div>
