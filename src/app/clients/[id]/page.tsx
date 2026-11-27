@@ -93,7 +93,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-ink-600 hover:text-ink-900 transition-colors mb-2"
+            className="inline-flex items-center gap-2 text-sm text-ink-600 dark:text-ink-600 hover:text-ink-900 dark:hover:text-ink-900 transition-colors mb-2"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Volver al Dashboard</span>
@@ -102,10 +102,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900">{client.name}</h1>
+                <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 dark:text-ink-900">{client.name}</h1>
                 <StatusBadge status={status} />
               </div>
-              <p className="text-sm text-ink-500 mt-1">Registrado el {formatDate(client.created_at)}</p>
+              <p className="text-sm text-ink-500 dark:text-ink-600 mt-1">Registrado el {formatDate(client.created_at)}</p>
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
@@ -119,7 +119,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 dark:hover:bg-emerald-500 transition-colors-200 shadow-sm dark:shadow-emerald-900/30"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>WhatsApp</span>
@@ -131,7 +131,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Columna Izquierda: Editar Información */}
           <Card className="md:col-span-2 space-y-4">
-            <h2 className="font-display text-lg font-semibold text-ink-900 border-b border-ink-100 pb-3">
+            <h2 className="font-display text-lg font-semibold text-ink-900 dark:text-ink-900 border-b border-ink-200 dark:border-ink-700 pb-3">
               Información del Cliente
             </h2>
 
@@ -148,7 +148,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               }}
             />
 
-            <div className="pt-4 border-t border-ink-100 flex justify-end">
+            <div className="pt-4 border-t border-ink-200 dark:border-ink-700 flex justify-end">
               <form action={softDeleteClientAction.bind(null, id)}>
                 <Button variant="danger" size="sm" type="submit">
                   <Trash2 className="w-3.5 h-3.5" />
@@ -160,14 +160,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
           {/* Columna Derecha: Estado de Suscripción */}
           <div className="space-y-4">
-            <Card className="space-y-3 bg-brand-50/50 border-brand-200">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-800">Suscripción Actual</h3>
-              <div className="text-2xl font-bold text-brand-900">{formatCOP(FIXED_FEE_COP)} COP</div>
-              <div className="space-y-1 text-xs text-ink-700">
+            <Card className="space-y-3 bg-brand-50/50 border-brand-200 dark:bg-brand-900/20 dark:border-brand-800">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-800 dark:text-brand-200">Suscripción Actual</h3>
+              <div className="text-2xl font-bold text-brand-900 dark:text-brand-100">{formatCOP(FIXED_FEE_COP)} COP</div>
+              <div className="space-y-1 text-xs text-ink-700 dark:text-ink-700">
                 <p>Último pago: <strong>{formatDate(lastPay)}</strong></p>
                 <p>Vence el: <strong>{formatDate(next_expiration)}</strong></p>
                 {days_left !== null && (
-                  <p className="font-semibold text-brand-700 mt-2">
+                  <p className="font-semibold text-brand-700 dark:text-brand-300 mt-2">
                     {days_left < 0
                       ? `Vencido hace ${Math.abs(days_left)} días`
                       : `Faltan ${days_left} días`}
@@ -178,8 +178,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
             {/* Historial de Pagos */}
             <Card className="space-y-3">
-              <h3 className="font-display text-sm font-semibold text-ink-900 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-ink-400" />
+              <h3 className="font-display text-sm font-semibold text-ink-900 dark:text-ink-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-ink-400 dark:text-ink-400" />
                 <span>Historial de Pagos</span>
               </h3>
 
@@ -189,26 +189,26 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   return (
                     <div
                       key={p.id}
-                      className={`p-2.5 rounded-lg text-xs flex justify-between items-center ${
-                        isVoided ? 'bg-rose-50' : 'bg-ink-100'
+                      className={`p-2.5 rounded-lg text-xs flex justify-between items-center transition-colors-200 ${
+                        isVoided ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-ink-50 dark:bg-ink-200'
                       }`}
                     >
                       <div className="flex-1">
-                        <p className="font-semibold text-ink-800">
+                        <p className="font-semibold text-ink-800 dark:text-ink-200">
                           {isVoided ? (
                             <>
-                              <span className="text-red-600 line-through">
+                              <span className="text-red-600 dark:text-red-400 line-through">
                                 {formatCOP(p.amount_cop)}
                               </span>{' '}
-                              <span className="text-red-600">(Anulado)</span>
+                              <span className="text-red-600 dark:text-red-400">(Anulado)</span>
                             </>
                           ) : (
                             formatCOP(p.amount_cop)
                           )}
                         </p>
-                        <p className="text-[11px] text-ink-500">{formatDate(p.paid_at)}</p>
+                        <p className="text-[11px] text-ink-500 dark:text-ink-600">{formatDate(p.paid_at)}</p>
                         {isVoided && (
-                          <p className="text-[10px] text-red-600 mt-1">
+                          <p className="text-[10px] text-red-600 dark:text-red-400 mt-1">
                             <strong>Motivo:</strong> {p.void_reason}
                             <br />
                             <strong>Anulado por:</strong> {p.voided_by}
@@ -223,27 +223,27 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 })}
 
                 {(!payments || payments.length === 0) && (
-                  <p className="text-xs text-ink-500 py-2 text-center">Sin pagos registrados</p>
+                  <p className="text-xs text-ink-500 dark:text-ink-600 py-2 text-center">Sin pagos registrados</p>
                 )}
               </div>
             </Card>
 
             {/* Asistencias Recientes */}
             <Card className="space-y-3">
-              <h3 className="font-display text-sm font-semibold text-ink-900 flex items-center gap-2">
+              <h3 className="font-display text-sm font-semibold text-ink-900 dark:text-ink-900 flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
                 <span>Últimas Asistencias</span>
               </h3>
 
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {attendances?.map((a) => (
-                  <div key={a.id} className="text-xs text-ink-700 flex justify-between items-center py-1 border-b border-ink-100 last:border-0">
+                  <div key={a.id} className="text-xs text-ink-700 dark:text-ink-700 flex justify-between items-center py-1 border-b border-ink-200 dark:border-ink-700 last:border-0">
                     <span>{formatDate(a.check_in)}</span>
-                    <span className="text-ink-500 font-mono text-[11px]">
+                    <span className="text-ink-500 dark:text-ink-600 font-mono text-[11px]">
                       {formatTime(a.check_in)}
                     </span>
-                    <details className="border border-ink-200 rounded px-2 py-1">
-                      <summary className="cursor-pointer text-xs text-ink-600 hover:text-ink-900">
+                    <details className="border border-ink-200 dark:border-ink-700 rounded px-2 py-1">
+                      <summary className="cursor-pointer text-xs text-ink-600 dark:text-ink-600 hover:text-ink-900 dark:hover:text-ink-900">
                         Eliminar
                       </summary>
                       <form action={deleteAttendanceAction.bind(null, id, a.id)}>
@@ -256,7 +256,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 ))}
 
                 {(!attendances || attendances.length === 0) && (
-                  <p className="text-xs text-ink-500 py-2 text-center">No hay registro de entradas</p>
+                  <p className="text-xs text-ink-500 dark:text-ink-600 py-2 text-center">No hay registro de entradas</p>
                 )}
               </div>
             </Card>

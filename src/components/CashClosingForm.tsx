@@ -25,9 +25,9 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
     : null;
 
   const differenceColor = lastDifference === null ? '' :
-    lastDifference === 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
-    lastDifference > 0 ? 'text-amber-700 bg-amber-50 border-amber-200' :
-    'text-rose-700 bg-rose-50 border-rose-200';
+    lastDifference === 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30' :
+    lastDifference > 0 ? 'text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30' :
+    'text-rose-700 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30';
 
   const differenceLabel = lastDifference === null ? '' :
     lastDifference === 0 ? 'Cuadrado ✓' :
@@ -38,8 +38,8 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
 
   return (
     <Card>
-      <h3 className="font-display text-lg font-semibold text-ink-900 mb-4 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-lg bg-ink-100 flex items-center justify-center">
+      <h3 className="font-display text-lg font-semibold text-ink-900 dark:text-ink-900 mb-4 flex items-center gap-2">
+        <span className="w-6 h-6 rounded-lg bg-ink-100 dark:bg-ink-200 flex items-center justify-center">
           <svg className="w-4 h-4 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -66,18 +66,18 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Efectivo esperado (calculado en servidor, solo lectura) */}
           <div>
-            <label htmlFor="expected_cash_cop" className="block text-xs font-medium text-ink-600 mb-1">
+            <label htmlFor="expected_cash_cop" className="block text-xs font-medium text-ink-600 dark:text-ink-600 mb-1">
               Efectivo esperado (calculado en servidor)
             </label>
-            <div className="w-full px-4 py-3 rounded-xl bg-ink-50 border border-ink-200 font-mono text-lg font-semibold text-ink-900">
+            <div className="w-full px-4 py-3 rounded-xl bg-ink-50 border border-ink-200 dark:bg-ink-200 dark:border-ink-700 font-mono text-lg font-semibold text-ink-900 dark:text-ink-900">
               {formatCOP(expectedCashCop)}
             </div>
-            <p className="text-xs text-ink-500 mt-1">Suma de pagos en EFECTIVO no anulados de {businessDate}</p>
+            <p className="text-xs text-ink-500 dark:text-ink-600 mt-1">Suma de pagos en EFECTIVO no anulados de {businessDate}</p>
           </div>
 
           {/* Efectivo contado */}
           <div>
-            <label htmlFor="counted_cash_cop" className="block text-xs font-medium text-ink-600 mb-1">
+            <label htmlFor="counted_cash_cop" className="block text-xs font-medium text-ink-600 dark:text-ink-600 mb-1">
               Efectivo contado <span className="text-rose-500">*</span>
             </label>
             <input
@@ -86,7 +86,7 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
               name="counted_cash_cop"
               inputMode="numeric"
               placeholder="Ej: 150000 o 150.000"
-              className="w-full px-4 py-3 rounded-xl border border-ink-200 bg-white text-lg font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-4 py-3 rounded-xl border border-ink-200 dark:border-ink-700 bg-surface text-lg font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900"
               required
               autoComplete="off"
             />
@@ -98,7 +98,7 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
 
         {/* Nota opcional */}
         <div>
-          <label htmlFor="note" className="block text-xs font-medium text-ink-600 mb-1">
+          <label htmlFor="note" className="block text-xs font-medium text-ink-600 dark:text-ink-600 mb-1">
             Nota (opcional)
           </label>
           <textarea
@@ -106,7 +106,7 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
             name="note"
             rows={2}
             placeholder="Observaciones sobre el cierre..."
-            className="w-full px-4 py-3 rounded-xl border border-ink-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            className="w-full px-4 py-3 rounded-xl border border-ink-200 dark:border-ink-700 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900 resize-none"
             maxLength={200}
           />
           {formState.fieldErrors?.note && (
@@ -140,7 +140,7 @@ export function CashClosingForm({ businessDate, expectedCashCop, latestClosing, 
           )}
 
           {formState.error && !formState.ok && (
-            <p className="text-sm text-rose-600">{formState.error}</p>
+            <p className="text-sm text-rose-600 dark:text-rose-400">{formState.error}</p>
           )}
         </div>
       </form>

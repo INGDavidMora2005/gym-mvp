@@ -81,17 +81,17 @@ export default async function AttendancePage({
       <Navigation ownerName={owner.name} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-ink-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-surface p-6 rounded-2xl border border-ink-200 dark:border-ink-700">
           <div>
-            <h1 className="font-display text-2xl font-bold text-ink-900 flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-ink-900 dark:text-ink-900 flex items-center gap-2">
               <CalendarCheck className="w-6 h-6 text-brand-600" />
               <span>Control de Asistencia Diaria</span>
             </h1>
-            <p className="text-sm text-ink-500 mt-1">
+            <p className="text-sm text-ink-500 dark:text-ink-600 mt-1">
               Marca el ingreso de los clientes al gimnasio el día de hoy
             </p>
           </div>
-          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-2 rounded-xl text-center">
+          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-800 px-4 py-2 rounded-xl text-center">
             <span className="text-xs font-semibold block uppercase tracking-wider">Asistencias Hoy</span>
             <span className="text-2xl font-bold">{totalTodayCount ?? 0} personas</span>
           </div>
@@ -104,18 +104,18 @@ export default async function AttendancePage({
               <input type="hidden" name="status" value={status} />
             )}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400 dark:text-ink-400" />
               <input
                 type="text"
                 name="q"
                 defaultValue={q}
                 placeholder="Buscar por nombre o teléfono..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 dark:border-ink-700 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900 bg-surface"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-500 transition-colors-200"
             >
               Buscar
             </button>
@@ -128,10 +128,10 @@ export default async function AttendancePage({
                 <Link
                   key={st}
                   href={buildStatusUrl(st)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors-200 ${
                     isSelected
                       ? 'bg-brand-600 text-white shadow-xs'
-                      : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
+                      : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-200 dark:text-ink-600 dark:hover:bg-ink-300'
                   }`}
                 >
                   {st === 'TODOS'
@@ -157,25 +157,25 @@ export default async function AttendancePage({
             return (
               <Card
                 key={c.id}
-                className={`flex items-center justify-between p-4 ${
-                  hasAttendedToday ? 'bg-emerald-50/40 border-emerald-200' : ''
+                className={`flex items-center justify-between p-4 transition-colors-200 ${
+                  hasAttendedToday ? 'bg-emerald-50/40 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-800' : ''
                 }`}
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-ink-900 text-sm">{c.name}</h3>
+                    <h3 className="font-semibold text-ink-900 dark:text-ink-900 text-sm">{c.name}</h3>
                     <StatusBadge status={c.status} />
                   </div>
-                  <p className="text-xs text-ink-500">{c.phone}</p>
-                  <p className="text-[11px] text-ink-400 mt-1">
+                  <p className="text-xs text-ink-500 dark:text-ink-600">{c.phone}</p>
+                  <p className="text-[11px] text-ink-400 dark:text-ink-400 mt-1">
                     Última entrada: {c.last_attendance ? formatDate(c.last_attendance) : 'Nunca'}
                   </p>
                 </div>
 
                 {hasAttendedToday ? (
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-semibold">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300 text-xs font-semibold">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>Ya entró hoy</span>
                     </span>
                     <form action={deleteAttendanceAction.bind(null, c.id, attendedMap.get(c.id)!.id)}>
@@ -196,12 +196,12 @@ export default async function AttendancePage({
           })}
 
           {pageClients.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-ink-200 space-y-3">
-              <p className="text-sm text-ink-500 font-medium">No se encontraron clientes</p>
+            <div className="col-span-full text-center py-12 bg-surface rounded-2xl border border-dashed border-ink-200 dark:border-ink-700 space-y-3">
+              <p className="text-sm text-ink-500 dark:text-ink-600 font-medium">No se encontraron clientes</p>
               <div>
                 <Link
                   href="?"
-                  className="inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700 underline"
+                  className="inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700 dark:hover:text-brand-400 underline"
                 >
                   Limpiar búsqueda
                 </Link>
