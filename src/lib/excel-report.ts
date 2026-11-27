@@ -39,10 +39,14 @@ export interface ReportWorkbookInput {
   monthly: RevenuePoint[];
 }
 
+/** Colores brand de Tailwind (argb) */
 const BRAND_700 = 'FF1A3DA0';
 const BRAND_500 = 'FF2F66E6';
+const BRAND_300 = 'FF8FB4FF';
+const BRAND_200 = 'FFBCD3FF';
 const BRAND_50 = 'FFEEF4FF';
 const EMERALD_600 = 'FF059669';
+const EMERALD_300 = 'FF6EE7B7';
 const INK_900 = 'FF14181F';
 const INK_600 = 'FF5A6272';
 const INK_200 = 'FFE9EBEF';
@@ -111,15 +115,24 @@ interface DataBarRule extends DataBarRuleType {
   color: Partial<Color>;
 }
 
-/** Barra de datos (formato condicional) sobre un rango de valores. */
-function addDataBar(ws: Worksheet, ref: string, argb: string, priority = 1): void {
+/** Barra de datos (formato condicional) sobre un rango de valores.
+ * La escala empieza en 0 (cfvo tipo 'num' con valor 0) para que el valor
+ * más bajo también muestre barra proporcional. El color es más claro para
+ * que el número se lea bien encima.
+ */
+function addDataBar(
+  ws: Worksheet,
+  ref: string,
+  argb: string,
+  priority = 1,
+): void {
   ws.addConditionalFormatting({
     ref,
     rules: [
       {
         type: 'dataBar',
         priority,
-        cfvo: [{ type: 'min' }, { type: 'max' }],
+        cfvo: [{ type: 'num', value: 0 }, { type: 'max' }],
         minLength: 0,
         maxLength: 100,
         showValue: true,
@@ -237,10 +250,10 @@ function buildSummarySheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput): vo
   // Encabezado del reporte
   ws.mergeCells(1, 1, 1, 7);
   const title = ws.getCell(1, 1);
-  title.value = 'Gimnasio MVP — Reporte del gimnasio';
+  title.value = 'Gimnasio MVP — Reporte';
   title.font = { bold: true, size: 20, color: { argb: BRAND_700 } };
   title.alignment = { vertical: 'middle' };
-  ws.getRow(1).height = 32;
+  ws.getRow(1).height = 30;
 
   ws.mergeCells(2, 1, 2, 7);
   const period = ws.getCell(2, 1);
@@ -295,7 +308,7 @@ function buildSummarySheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput): vo
       row += 1;
     }
 
-    addDataBar(ws, `C${methodFirstRow}:C${row - 1}`, BRAND_500);
+    addDataBar(ws, `C${methodFirstRow}:C${row - 1}`, BRAND_300);
 
     // Fila de total
     ws.getCell(row, 1).value = 'Total';
@@ -348,7 +361,7 @@ function buildSummarySheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput): vo
   }
 
   if (summary.attendance_by_day.length > 0) {
-    addDataBar(ws, `B${attendanceFirstRow}:B${row - 1}`, EMERALD_600);
+    addDataBar(ws, `B${attendanceFirstRow}:B${row - 1}`, EMERALD_300);
   }
 
   row += 1;
@@ -401,7 +414,7 @@ function buildSummarySheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput): vo
   }
 
   if (monthly.length > 0) {
-    addDataBar(ws, `C${monthFirstRow}:C${row - 1}`, BRAND_500);
+    addDataBar(ws, `C${monthFirstRow}:C${row - 1}`, BRAND_300);
   }
 }
 
@@ -415,15 +428,15 @@ function buildPaymentsSheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput): v
   setupPrint(ws, true);
 
   ws.columns = [
-    { width: 12 }, // Fecha
-    { width: 8 }, // Hora
+    { width: 12, alignment: { horizontal: 'center' } }, // Fecha
+    { width: 8, alignment: { horizontal: 'center' } }, // Hora
     { width: 30 }, // Cliente
-    { width: 14 }, // Monto
-    { width: 14 }, // Método
+    { width: 14, alignment: { horizontal: 'right', indent: 1 } }, // Monto
+    { width: 14, alignment: { horizontal: 'center' } }, // Método
     { width: 20 }, // Registrado por
-    { width: 14 }, // Inicio periodo
-    { width: 14 }, // Fin periodo
-    { width: 11 }, // Estado
+    { width: 14, alignment: { horizontal: 'center' } }, // Inicio periodo
+    { width: 14, alignment: { horizontal: 'center' } }, // Fin periodo
+    { width: 11, alignment: { horizontal: 'center' } }, // Estado
     { width: 18 }, // Anulado por
     { width: 30 }, // Motivo de anulación
   ];
@@ -466,6 +479,13 @@ function buildPaymentsSheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput): v
     rows,
   });
   table.commit();
+
+  // Re-aplicar alineaciones de columna después del commit de la tabla
+  ws.getColumn(1).alignment = { horizontal: 'center' }; // Fecha
+  ws.getColumn(2).alignment = { horizontal: 'center' }; // Hora
+  ws.getColumn(4).alignment = { horizontal: 'right', indent: 1 }; // Monto
+  ws.getColumn(5).alignment = { horizontal: 'center' }; // Método
+  ws.getColumn(9).alignment = { horizontal: 'center' }; // Estado
 
   styleTableHeaderRow(ws, 1, 1, columns.length);
 
@@ -519,8 +539,8 @@ function buildAttendanceSheet(wb: ExcelJS.Workbook, input: ReportWorkbookInput):
   setupPrint(ws, true);
 
   ws.columns = [
-    { width: 12 }, // Fecha
-    { width: 8 }, // Hora
+    { width: 12, alignment: { horizontal: 'center' } }, // Fecha
+    { width: 8, alignment: { horizontal: 'center' } }, // Hora
     { width: 30 }, // Cliente
     { width: 20 }, // Registrado por
   ];

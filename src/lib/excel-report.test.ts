@@ -125,6 +125,13 @@ describe('buildReportWorkbook', () => {
     expect(wb.views[0]?.activeTab).toBe(0);
   });
 
+  it('el título del Resumen es "Gimnasio MVP — Reporte"', async () => {
+    const wb = await loadWorkbook(await buildReportWorkbook(buildInput()));
+    const resumen = wb.getWorksheet('Resumen')!;
+    expect(resumen.getCell('A1').value).toBe('Gimnasio MVP — Reporte');
+    expect(resumen.properties.tabColor?.argb).toBe('FF1A3DA0');
+  });
+
   it('incluye la cabecera de columnas de la tabla Pagos', async () => {
     const wb = await loadWorkbook(await buildReportWorkbook(buildInput()));
     const pagos = wb.getWorksheet('Pagos');
@@ -145,6 +152,24 @@ describe('buildReportWorkbook', () => {
       'Motivo de anulación',
     ]);
     expect(pagos!.getTables()).toHaveLength(1);
+  });
+
+  it('centra columnas Fecha, Hora, Método, Estado', async () => {
+    const wb = await loadWorkbook(await buildReportWorkbook(buildInput()));
+    const pagos = wb.getWorksheet('Pagos')!;
+
+    expect(pagos.getColumn(1).alignment?.horizontal).toBe('center');
+    expect(pagos.getColumn(2).alignment?.horizontal).toBe('center');
+    expect(pagos.getColumn(5).alignment?.horizontal).toBe('center');
+    expect(pagos.getColumn(9).alignment?.horizontal).toBe('center');
+  });
+
+  it('alineación a derecha con indent 1 en Monto', async () => {
+    const wb = await loadWorkbook(await buildReportWorkbook(buildInput()));
+    const pagos = wb.getWorksheet('Pagos')!;
+
+    expect(pagos.getColumn(4).alignment?.horizontal).toBe('right');
+    expect(pagos.getColumn(4).alignment?.indent).toBe(1);
   });
 
   it('escribe fechas como Date y montos como número con formato de pesos', async () => {
@@ -243,5 +268,35 @@ describe('buildReportWorkbook', () => {
     // Sin filas de datos, la fila de totales queda justo bajo la cabecera.
     expect(pagos.getCell('A2').value).toBe('TOTAL (vigentes)');
     expect(pagos.getCell('D2').value).toBe(0);
+  });
+
+  it('las barras de datos tienen valor mínimo en 0 (cfvo tipo num)', async () => {
+    const wb = await loadWorkbook(await buildReportWorkbook(buildInput()));
+    const resumen = wb.getWorksheet('Resumen')!;
+
+    // En Resumen, hoja de Ingresos por método (columna C) - buscar por index 0
+    // ya que es el primer conditional formatting agregado
+    const cfMethods = (resumen as any).conditionalFormattings?.[0]?.rules?.[0]?.cfvo;
+    expect(cfMethods).toBeDefined();
+    expect(cfMethods).toHaveLength(2);
+    expect(cfMethods[0].type).toBe('num');
+    expect(cfMethods[0].value).toBe(0);
+    expect(cfMethods[1].type).toBe('max');
+
+    // En Resumen, hoja de Asistencia por día (columna B) - buscar el que usa columna B
+    const cfAttendance = (resumen as any).conditionalFormattings?.find((r: any) =>
+      r.ref?.startsWith('B') || r.ref?.includes('B'),
+    )?.rules?.[0]?.cfvo;
+    expect(cfAttendance).toBeDefined();
+    expect(cfAttendance[0].type).toBe('num');
+    expect(cfAttendance[0].value).toBe(0);
+
+    // En Resumen, hoja de Ingresos de los últimos 6 meses (columna C)
+    const cfMonthly = (resumen as any).conditionalFormattings?.find((r: any) =>
+      r.ref?.startsWith('C') || r.ref?.includes('C'),
+    )?.rules?.[0]?.cfvo;
+    expect(cfMonthly).toBeDefined();
+    expect(cfMonthly[0].type).toBe('num');
+    expect(cfMonthly[0].value).toBe(0);
   });
 });
