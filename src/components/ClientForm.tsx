@@ -46,30 +46,30 @@ export function ClientForm({
   const isCreate = mode === 'create';
 
   const labelClass = isCreate
-    ? 'block text-sm font-medium text-ink-800 dark:text-ink-800 mb-1'
-    : 'block text-xs font-medium text-ink-700 dark:text-ink-700 mb-1';
+    ? 'block text-sm font-medium text-ink-800 mb-1'
+    : 'block text-xs font-medium text-ink-700 mb-1';
 
   const inputClass = isCreate
-    ? 'w-full px-4 py-2.5 rounded-xl border border-ink-200 dark:border-ink-700 bg-surface text-sm focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900 focus:outline-none'
-    : 'w-full px-3.5 py-2 rounded-xl border border-ink-200 dark:border-ink-700 bg-surface text-sm focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900';
+    ? 'w-full px-4 py-2.5 rounded-xl border border-ink-200 bg-surface text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none'
+    : 'w-full px-3.5 py-2 rounded-xl border border-ink-200 bg-surface text-sm focus:ring-2 focus:ring-brand-500';
 
   function fieldError(field: string) {
     const messages = state?.fieldErrors?.[field];
     if (!messages || messages.length === 0) return null;
 
-    return <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{messages[0]}</p>;
+    return <p className="text-xs text-rose-600 mt-1">{messages[0]}</p>;
   }
 
   return (
     <form action={formAction} className={isCreate ? 'space-y-5' : 'space-y-4'}>
       {state?.error && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-700 dark:bg-rose-500/10 dark:border-rose-800 dark:text-rose-300">
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-700">
           {state.error}
         </div>
       )}
 
       {!isCreate && state?.ok && (
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-800 dark:text-emerald-300">
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
           Cambios guardados
         </div>
       )}
@@ -174,7 +174,7 @@ export function ClientForm({
       </div>
 
       {isCreate && (
-        <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 flex items-start gap-3">
+        <div className="p-4 rounded-xl bg-brand-50 border border-brand-200 flex items-start gap-3">
           <input
             type="checkbox"
             name="first_payment"
@@ -183,7 +183,7 @@ export function ClientForm({
             onChange={(event) => setFirstPayment(event.target.checked)}
             className="mt-1 w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-ink-300"
           />
-          <label htmlFor="first_payment" className="text-xs text-brand-900 dark:text-brand-100 leading-relaxed cursor-pointer">
+          <label htmlFor="first_payment" className="text-xs text-brand-900 leading-relaxed cursor-pointer">
             <strong>
               Registrar pago de mensualidad inicial de {formatCOP(FIXED_FEE_COP)} COP hoy mismo.
             </strong>{' '}

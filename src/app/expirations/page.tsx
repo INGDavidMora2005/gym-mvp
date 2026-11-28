@@ -23,13 +23,13 @@ export default async function ExpirationsPage() {
       <Navigation ownerName={owner.name} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-surface p-6 rounded-2xl border border-ink-200 dark:border-ink-700">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-surface p-6 rounded-2xl border border-ink-200">
           <div>
-            <h1 className="font-display text-2xl font-bold text-ink-900 dark:text-ink-900 flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-ink-900 flex items-center gap-2">
               <AlertTriangle className="w-6 h-6 text-amber-500" />
               <span>Suscripciones por Vencer / Vencidas</span>
             </h1>
-            <p className="text-sm text-ink-500 dark:text-ink-600 mt-1">
+            <p className="text-sm text-ink-500 mt-1">
               Envía recordatorios inmediatos por WhatsApp para asegurar el pago
             </p>
           </div>
@@ -50,12 +50,12 @@ export default async function ExpirationsPage() {
               <Card key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
-                    <Link href={`/clients/${c.id}`} className="font-bold text-ink-900 dark:text-ink-900 hover:text-brand-600 dark:hover:text-brand-400 text-base">
+                    <Link href={`/clients/${c.id}`} className="font-bold text-ink-900 hover:text-brand-600 text-base">
                       {c.name}
                     </Link>
                     <StatusBadge status={c.status} />
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600 dark:text-ink-600">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600">
                     <span>Teléfono: <strong>{c.phone}</strong></span>
                     <span>Vencimiento: <strong>{formatDate(c.next_expiration)}</strong></span>
                   </div>
@@ -93,7 +93,7 @@ export default async function ExpirationsPage() {
 
           {urgentClients.length === 0 && (
             <Card className="text-center py-12">
-              <p className="text-ink-500 dark:text-ink-600 font-medium text-sm">
+              <p className="text-ink-500 font-medium text-sm">
                 🎉 ¡Excelente! No hay suscripciones vencidas ni por vencer en los próximos 5 días.
               </p>
             </Card>

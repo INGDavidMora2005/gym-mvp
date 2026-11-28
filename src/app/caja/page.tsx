@@ -120,13 +120,13 @@ export default async function CashPage({
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Header con selector de fecha */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-ink-200 dark:border-ink-700 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-ink-200 shadow-xs">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 dark:text-ink-900 tracking-tight flex items-center gap-3">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 tracking-tight flex items-center gap-3">
               <Wallet className="w-7 h-7 text-brand-600" />
               <span>Caja</span>
             </h1>
-            <p className="text-sm text-ink-600 dark:text-ink-600 mt-1">Resumen diario por método y cierre de efectivo</p>
+            <p className="text-sm text-ink-600 mt-1">Resumen diario por método y cierre de efectivo</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
@@ -138,9 +138,9 @@ export default async function CashPage({
                 name="date"
                 defaultValue={businessDate}
                 max={toBogotaDayKey(new Date())}
-                className="px-4 py-2.5 rounded-xl border border-ink-200 dark:border-ink-700 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900 w-48"
+                className="px-4 py-2.5 rounded-xl border border-ink-200 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
               />
-              <button type="submit" className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-500 transition-colors-200">
+              <button type="submit" className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-brand-solid text-white hover:bg-brand-solid-hover transition-colors-200">
                 Ver
               </button>
             </form>

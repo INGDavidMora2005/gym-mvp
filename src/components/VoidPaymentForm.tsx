@@ -17,13 +17,13 @@ export function VoidPaymentForm({
   );
 
   return (
-    <details className="border border-ink-200 dark:border-ink-700 rounded-lg p-3">
-      <summary className="cursor-pointer text-xs font-semibold text-ink-600 dark:text-ink-600 hover:text-ink-900 dark:hover:text-ink-900 mb-2">
+    <details className="border border-ink-200 rounded-lg p-3">
+      <summary className="cursor-pointer text-xs font-semibold text-ink-600 hover:text-ink-900 mb-2">
         Anular
       </summary>
       <form action={formAction} className="space-y-3">
         <div>
-          <label htmlFor={`reason-${paymentId}`} className="block text-xs font-medium text-ink-700 dark:text-ink-700 mb-1">
+          <label htmlFor={`reason-${paymentId}`} className="block text-xs font-medium text-ink-700 mb-1">
             Motivo de la anulación
           </label>
           <textarea
@@ -35,16 +35,16 @@ export function VoidPaymentForm({
             required
             className={`w-full px-3 py-2 text-sm border rounded-lg bg-surface transition-colors-200 ${
               state?.fieldErrors?.reason
-                ? 'border-red-300 focus:ring-red-500 focus:border-red-500 dark:border-red-700 dark:focus:ring-red-400'
-                : 'border-ink-200 dark:border-ink-700 focus:ring-brand-500 focus:border-brand-500 dark:focus:ring-offset-ink-900'
+                ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                : 'border-ink-200 focus:ring-brand-500 focus:border-brand-500'
             }`}
             rows={2}
           />
           {state?.fieldErrors?.reason && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">{state.fieldErrors.reason[0]}</p>
+            <p className="text-xs text-red-600 mt-1">{state.fieldErrors.reason[0]}</p>
           )}
           {state?.error && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">{state.error}</p>
+            <p className="text-xs text-red-600 mt-1">{state.error}</p>
           )}
         </div>
         <SubmitButton>Confirmar Anulación</SubmitButton>

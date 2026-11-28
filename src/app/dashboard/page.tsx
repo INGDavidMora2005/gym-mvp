@@ -37,47 +37,47 @@ export default async function DashboardPage({
       <Navigation ownerName={owner.name} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-ink-200 dark:border-ink-700 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-ink-200 shadow-xs">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 dark:text-ink-900 tracking-tight">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 tracking-tight">
               Bienvenido, {owner.name} 👋
             </h1>
-            <p className="text-sm text-ink-600 dark:text-ink-500 mt-1">Resumen en tiempo real del estado de tu gimnasio</p>
+            <p className="text-sm text-ink-600 mt-1">Resumen en tiempo real del estado de tu gimnasio</p>
           </div>
-          <div className="bg-brand-50 border border-brand-200 dark:bg-brand-900/20 dark:border-brand-800 rounded-xl px-4 py-2 text-right">
-            <span className="text-xs font-medium text-brand-700 dark:text-brand-200 block">Tarifa Única</span>
-            <span className="text-lg font-bold text-brand-900 dark:text-white">{formatCOP(FIXED_FEE_COP)} COP / mes</span>
+          <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-2 text-right">
+            <span className="text-xs font-medium text-brand-700 block">Tarifa Única</span>
+            <span className="text-lg font-bold text-brand-900">{formatCOP(FIXED_FEE_COP)} COP / mes</span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="flex items-center gap-4">
-            <div className="p-3 bg-brand-50 text-brand-600 dark:bg-brand-900/20 dark:text-brand-400 rounded-xl"><Users className="w-6 h-6" /></div>
+            <div className="p-3 bg-brand-50 text-brand-600 rounded-xl"><Users className="w-6 h-6" /></div>
             <div>
-              <p className="text-xs font-semibold text-ink-500 dark:text-ink-600 uppercase tracking-wider">Total Clientes</p>
-              <p className="text-2xl font-bold text-ink-900 dark:text-ink-900">{stats.total_clients}</p>
+              <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Total Clientes</p>
+              <p className="text-2xl font-bold text-ink-900">{stats.total_clients}</p>
             </div>
           </Card>
           <Card className="flex items-center gap-4">
             <div className="p-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-xl"><CheckCircle className="w-6 h-6" /></div>
             <div>
-              <p className="text-xs font-semibold text-ink-500 dark:text-ink-600 uppercase tracking-wider">Activos</p>
+              <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Activos</p>
               <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{stats.active_clients}</p>
             </div>
           </Card>
           <Card className="flex items-center gap-4">
             <div className="p-3 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 rounded-xl"><AlertTriangle className="w-6 h-6" /></div>
             <div>
-              <p className="text-xs font-semibold text-ink-500 dark:text-ink-600 uppercase tracking-wider">Por Vencer</p>
+              <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Por Vencer</p>
               <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{stats.expiring_this_week}</p>
             </div>
           </Card>
           <Card className="flex items-center gap-4">
             <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 rounded-xl"><DollarSign className="w-6 h-6" /></div>
             <div>
-              <p className="text-xs font-semibold text-ink-500 dark:text-ink-600 uppercase tracking-wider">Ingresos Este Mes</p>
-              <p className="text-xl font-bold text-ink-900 dark:text-ink-900">{formatCOP(stats.revenue_this_month)}</p>
-              <p className="text-[11px] text-ink-500 dark:text-ink-600">
+              <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Ingresos Este Mes</p>
+              <p className="text-xl font-bold text-ink-900">{formatCOP(stats.revenue_this_month)}</p>
+              <p className="text-[11px] text-ink-500">
                 {stats.payments_this_month === 1
                   ? '1 pago'
                   : `${stats.payments_this_month} pagos`}
@@ -107,8 +107,8 @@ export default async function DashboardPage({
                 return (
                   <div key={c.id} className="bg-surface p-3.5 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-ink-900 dark:text-ink-900 text-sm">{c.name}</p>
-                      <p className="text-xs text-ink-500 dark:text-ink-600">
+                      <p className="font-semibold text-ink-900 text-sm">{c.name}</p>
+                      <p className="text-xs text-ink-500">
                         Última visita:{' '}
                         {daysAbsent !== null
                           ? `hace ${daysAbsent} días`

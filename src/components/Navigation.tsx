@@ -17,7 +17,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 export function Navigation({ ownerName }: { ownerName?: string }) {
   return (
-    <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-ink-200 dark:border-ink-700 shadow-xs">
+    <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-ink-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo y Nombre del Gimnasio */}
@@ -48,18 +48,18 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
           <div className="flex items-center gap-3">
             <Link
               href="/clients/new"
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-all shadow-sm shadow-brand-200"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-brand-solid text-white text-sm font-medium hover:bg-brand-solid-hover transition-all shadow-sm shadow-brand-200"
             >
               <UserPlus className="w-4 h-4" />
               <span className="hidden sm:inline">Nuevo Cliente</span>
             </Link>
 
             {ownerName && (
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-ink-100 border border-ink-200 dark:bg-ink-800 dark:border-ink-700">
-                <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center dark:bg-brand-800 dark:text-brand-300">
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-ink-100 border border-ink-200">
+                <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
                   {ownerName.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs font-medium text-ink-800 dark:text-ink-200">{ownerName}</span>
+                <span className="text-xs font-medium text-ink-800">{ownerName}</span>
               </div>
             )}
 
@@ -79,7 +79,7 @@ export function Navigation({ ownerName }: { ownerName?: string }) {
       </div>
 
       {/* Navegación Móvil Inferior */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-ink-200 dark:border-ink-700 shadow-lg px-1 py-1">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-ink-200 shadow-lg px-1 py-1">
         <div className="flex justify-around items-center">
           <ClientNavItem href="/dashboard" icon={LayoutDashboard} label="Inicio" />
           <ClientNavItem href="/attendance" icon={CalendarCheck} label="Asistencia" />

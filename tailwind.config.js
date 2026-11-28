@@ -19,6 +19,8 @@ module.exports = {
           700: 'rgb(var(--brand-700) / <alpha-value>)',
           800: 'rgb(var(--brand-800) / <alpha-value>)',
           900: 'rgb(var(--brand-900) / <alpha-value>)',
+          solid: 'rgb(var(--brand-solid) / <alpha-value>)',
+          'solid-hover': 'rgb(var(--brand-solid-hover) / <alpha-value>)',
         },
         ink: {
           50: 'rgb(var(--ink-50) / <alpha-value>)',

@@ -59,11 +59,9 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
 
   if (!mounted) {
     // Render placeholder with same dimensions to prevent layout shift
-    // Show moon icon (dark mode) since initial state defaults to light, but this renders before hydration
     return (
-      <div className={`${className} inline-flex items-center justify-center p-2.5 rounded-xl bg-surface border border-ink-200 dark:border-ink-700`} style={{ minWidth: '40px', minHeight: '40px' }}>
-        <Sun className="w-5 h-5 hidden dark:block" aria-hidden="true" />
-        <Moon className="w-5 h-5 block dark:hidden" aria-hidden="true" />
+      <div className={`${className} inline-flex items-center justify-center p-2.5 rounded-xl bg-surface border border-ink-200`} style={{ minWidth: '40px', minHeight: '40px' }}>
+        <Sun className="w-5 h-5" aria-hidden="true" />
       </div>
     );
   }
@@ -71,12 +69,15 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
   return (
     <button
       onClick={toggleTheme}
-      className={`${className} relative inline-flex items-center justify-center p-2.5 rounded-xl bg-surface border border-ink-200 dark:border-ink-700 text-ink-600 dark:text-ink-600 hover:bg-ink-100 dark:hover:bg-ink-700 transition-colors-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-ink-900`}
+      className={`${className} inline-flex items-center justify-center p-2.5 rounded-xl bg-surface border border-ink-200 text-ink-600 hover:bg-ink-100 transition-colors-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2`}
       aria-label={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
       style={{ minWidth: '40px', minHeight: '40px' }}
     >
-      <Sun className="w-5 h-5 hidden dark:block transition-opacity" aria-hidden="true" />
-      <Moon className="w-5 h-5 block dark:hidden transition-opacity" aria-hidden="true" />
+      {theme === 'light' ? (
+        <Moon className="w-5 h-5 transition-opacity" aria-hidden="true" />
+      ) : (
+        <Sun className="w-5 h-5 transition-opacity" aria-hidden="true" />
+      )}
     </button>
   );
 }

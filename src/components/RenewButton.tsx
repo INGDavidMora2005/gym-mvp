@@ -45,14 +45,14 @@ export function RenewButton({ clientId, habitualMethod, fee = FIXED_FEE_COP }: R
   if (showPanel) {
     return (
       <form onSubmit={handleSubmit} className="flex-1 sm:flex-initial">
-        <div className="space-y-2 p-3 bg-brand-50 dark:bg-brand-900/20 rounded-xl border border-brand-200 dark:border-brand-800 animate-slide-down w-full sm:w-[280px]">
+        <div className="space-y-2 p-3 bg-brand-50 border border-brand-200 rounded-xl animate-slide-down w-full sm:w-[280px]">
           <div className="flex items-center gap-2">
-            <label htmlFor={`payment-method-detail-${clientId}`} className="text-xs font-medium text-ink-700 dark:text-ink-700 w-24 shrink-0">
+            <label htmlFor={`payment-method-detail-${clientId}`} className="text-xs font-medium text-ink-700 w-24 shrink-0">
               Método
             </label>
             <select
               id={`payment-method-detail-${clientId}`}
-              className="flex-1 px-3 py-2 text-sm border border-ink-200 dark:border-ink-700 rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-offset-ink-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
               value={selectedMethod}
               onChange={(e) => setSelectedMethod(e.target.value as PaymentMethod)}
@@ -75,7 +75,7 @@ export function RenewButton({ clientId, habitualMethod, fee = FIXED_FEE_COP }: R
             </Button>
           </div>
           {renewError && (
-            <p className="text-xs text-red-600 dark:text-red-400 text-center">{renewError}</p>
+            <p className="text-xs text-red-600 text-center">{renewError}</p>
           )}
         </div>
       </form>
